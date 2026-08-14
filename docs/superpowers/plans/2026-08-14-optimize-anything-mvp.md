@@ -1277,7 +1277,7 @@ Run: `zsh scripts/check.sh`
 
 Expected: all unit, integration, build, package, signature, and runtime-ingest checks pass with verified source hashes and codecs.
 
-- [ ] **Step 6: Perform native user-facing evidence checks**
+- [x] **Step 6: Perform native user-facing evidence checks**
 
 Launch `dist/Optimize Anything.app` normally. Using Finder and the generated fixture directory, prove each item independently:
 
@@ -1291,6 +1291,15 @@ Launch `dist/Optimize Anything.app` normally. Using Finder and the generated fix
 8. Canceling an active generated long video removes its temporary output and advances the queue.
 
 Capture concrete evidence where the environment allows it. If macOS TCC, notification settings, GUI access, or native pixel capture is unavailable, report that item separately as unverified; automated checks cannot stand in for it.
+
+Verified 2026-08-15 in an active macOS GUI session: one menu bar item and no
+Dock item; real Finder hover, leave, and four-file drop; active/queued/results
+popover states; collision naming; exact Finder reveal; granted native
+Notification Center summary; disabled-notification conversion with the same
+complete in-app summary and no new native notification record; and active-job
+cancel with temporary-output cleanup followed by queued-job completion. Source
+hashes remained unchanged, and the notification permission was restored after
+the denial check.
 
 - [x] **Step 7: Commit and push Task 7**
 

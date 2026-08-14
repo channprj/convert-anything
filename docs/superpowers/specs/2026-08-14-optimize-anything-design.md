@@ -1,6 +1,6 @@
 # Optimize Anything Product Requirements and Design
 
-- **Status:** Implemented; automated acceptance verified, native interaction acceptance partial
+- **Status:** Implemented and verified
 - **Date:** 2026-08-14
 - **Repository:** `channprj/optimize-anything` (private)
 - **Initial release:** Native Apple Silicon macOS MVP
@@ -413,11 +413,26 @@ converts WAV, MOV, opaque PNG, and alpha PNG through the application ingest path
 while preserving source SHA-256 values. A GUI-session launch also confirmed the
 process is background-only with `LSUIElement=true`.
 
-The full Finder-to-status-item gesture, hover pixels, popover actions under
-interactive use, Finder selection, and granted/denied notification banners were
-not authoritatively observed in this automated session. Those native interaction
-items remain required before changing this document's status to `Implemented and
-verified` or treating the MVP Definition of Done as fully closed.
+### Verification Record — 2026-08-15
+
+Native acceptance is complete in an active macOS GUI session. Accessibility
+inspection confirmed one menu bar item and no Dock item. Real Finder drags
+showed the expanded `Drop to optimize` target and restored the idle target on
+leave; a four-file Finder drop enqueued WAV, MOV, opaque PNG, and alpha PNG and
+created valid M4A, WebM, and AVIF siblings without modifying source hashes. The
+popover showed active, queued, completed, and canceled states; repeated input
+used the collision suffix; `Show Output` selected the exact output in Finder;
+and canceling a long video removed its temporary output before the queued job
+advanced.
+
+With notification permission granted, Notification Center displayed one native
+`Optimization finished with issues` summary after the queue drained. With
+permission disabled in System Settings, a separate conversion still succeeded,
+the native notification database record count did not increase, and the
+popover retained the complete `1 completed · 0 failed · 0 canceled · 72 KB
+saved` summary. Notification permission was then restored to its original
+enabled state. Together with the automated record above, every MVP Definition
+of Done item now has authoritative evidence.
 
 ## 5. Risks & Roadmap
 
