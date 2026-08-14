@@ -4,7 +4,9 @@ import Foundation
 @main
 struct TestMain {
   static func main() async {
-    let tests = ruleCatalogTests + mappingStoreTests
+    let tests =
+      ruleCatalogTests + mappingStoreTests + dropAdmissionServiceTests + outputPathResolverTests
+      + encoderArgumentsTests
     var failures: [(String, Error)] = []
 
     for test in tests {
