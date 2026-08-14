@@ -6,7 +6,7 @@
 
 **Architecture:** A Foundation-only `OptimizeAnythingCore` library owns rules, settings, admission, planning, subprocess execution, validation, and the serial queue. An AppKit/SwiftUI `OptimizeAnythingMac` library owns the menu bar drop surface, popover, settings window, Finder actions, and `UNUserNotificationCenter`; a thin executable target starts it. Pinned LGPL-compatible FFmpeg and FFprobe executables are built reproducibly and embedded in an ad-hoc-signed `.app` bundle.
 
-**Tech Stack:** Swift 6.3, Swift Package Manager, AppKit, SwiftUI, Foundation `Process`, UserNotifications, XCTest, FFmpeg 8.0, libvpx 1.15.0, libaom 3.12.1, Opus 1.5.2, zsh build and acceptance scripts.
+**Tech Stack:** Swift 6.3, Swift Package Manager, AppKit, SwiftUI, Foundation `Process`, UserNotifications, executable Swift test harnesses, FFmpeg 8.0, libvpx 1.15.0, libaom 3.12.1, Opus 1.5.2, zsh build and acceptance scripts.
 
 ## Global Constraints
 
@@ -111,77 +111,19 @@ The task sequence below is also the realtime checkpoint sequence:
 
 `Tests/OptimizeAnythingCoreTests/TestSupport.swift` is created in Task 1 with
 temporary-file and async assertion helpers, expanded in Task 2 after planning
-types exist, and expanded again in Task 3 after probe/outcome types exist. Its
-initial content includes these complete helpers:
+types exist, and expanded again in Task 3 after probe/outcome types exist.
 
-```swift
-import CryptoKit
-import Foundation
-import XCTest
-
-func temporaryDirectory() throws -> URL {
-    let url = FileManager.default.temporaryDirectory
-        .appending(path: "optimize-anything-tests")
-        .appending(path: UUID().uuidString)
-    try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-    return url
-}
-
-func fixtureFile(named name: String, bytes: Data, in directory: URL? = nil) throws -> URL {
-    let directory = try directory ?? temporaryDirectory()
-    let url = directory.appending(path: name)
-    try bytes.write(to: url)
-    return url
-}
-
-func sha256(_ url: URL) throws -> String {
-    SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined()
-}
-
-func XCTAssertThrowsErrorAsync<T>(
-    _ operation: () async throws -> T,
-    file: StaticString = #filePath,
-    line: UInt = #line
-) async {
-    do {
-        _ = try await operation()
-        XCTFail("Expected operation to throw", file: file, line: line)
-    } catch {}
-}
-
-func XCTAssertContainsSubsequence<T: Equatable>(
-    _ values: [T],
-    _ subsequence: [T],
-    file: StaticString = #filePath,
-    line: UInt = #line
-) {
-    guard !subsequence.isEmpty, subsequence.count <= values.count else {
-        return XCTFail("Invalid or missing subsequence", file: file, line: line)
-    }
-    let found = (0...(values.count - subsequence.count)).contains {
-        Array(values[$0..<($0 + subsequence.count)]) == subsequence
-    }
-    XCTAssertTrue(found, file: file, line: line)
-}
-
-func eventually(
-    timeout: Duration = .seconds(2),
-    condition: @escaping @Sendable () async -> Bool
-) async throws {
-    let clock = ContinuousClock()
-    let deadline = clock.now.advanced(by: timeout)
-    while clock.now < deadline {
-        if await condition() { return }
-        try await Task.sleep(for: .milliseconds(10))
-    }
-    XCTFail("Condition did not become true before timeout")
-}
-```
+The available Command Line Tools installation discovered no usable XCTest tests,
+so the implemented package uses executable targets named
+`OptimizeAnythingCoreTests`, `OptimizeAnythingMacTests`, and
+`OptimizeAnythingIntegrationTests`. Each harness runs named async `TestCase`
+values, prints exact pass/fail totals, and exits nonzero on any failure. This is
+the authoritative test path used by `scripts/check.sh`.
 
 Task-local fakes are defined in their named test file, not hidden in production
 code. Each fake records every call, exposes bounded async wait methods through
-`eventually`, and requires the test to finish any suspended continuation in
-`tearDown` so a failed test cannot hang the suite.
+`eventually`, and finishes every suspended continuation so a failed test cannot
+hang the suite.
 
 ### Task 1: Validated Rules and Versioned Settings
 
@@ -199,7 +141,7 @@ code. Each fake records every call, exposes bounded async wait methods through
 - Consumes: Approved profile values and the one-enabled-rule-per-extension invariant from the PRD.
 - Produces: `MediaFamily`, `TargetFormat`, `QualityPreset`, `ConversionRule`, `SettingsDocument`, `RuleCatalog`, `RuleValidator.validate(_:)`, and actor `MappingStore.load()/save(_:)` for every later task.
 
-- [ ] **Step 1: Create the package manifest and failing rule tests**
+- [x] **Step 1: Create the package manifest and failing rule tests**
 
 Start with only source-bearing core targets. Task 5 extends this manifest when
 Mac sources are created, and Task 7 adds the integration target when its test
@@ -217,61 +159,28 @@ let package = Package(
     ],
     targets: [
         .target(name: "OptimizeAnythingCore"),
-        .testTarget(name: "OptimizeAnythingCoreTests", dependencies: ["OptimizeAnythingCore"]),
+        .executableTarget(
+            name: "OptimizeAnythingCoreTests",
+            dependencies: ["OptimizeAnythingCore"],
+            path: "Tests/OptimizeAnythingCoreTests"
+        ),
     ]
 )
 ```
 
-Start `RuleCatalogTests` with exact defaults, normalization, compatibility, and conflict assertions:
+Start `RuleCatalogTests` with named cases covering the three exact default
+arrays and targets, leading-dot and case normalization,
+enabled-rule conflicts, disabled-rule coexistence, empty sources, incompatible
+targets, and the family compatibility matrix. Each is a named async `TestCase`
+using the shared `expectEqual`, `expectTrue`, or `expectThrows` helper.
 
-```swift
-import XCTest
-@testable import OptimizeAnythingCore
+- [x] **Step 2: Run the rule tests and observe the missing-type failure**
 
-final class RuleCatalogTests: XCTestCase {
-    func testDefaultRulesMatchApprovedBalancedProfiles() throws {
-        let rules = RuleCatalog.defaultRules
-        XCTAssertEqual(rules.count, 3)
-        XCTAssertEqual(rules[0].sourceExtensions, ["wav", "aiff", "flac", "caf"])
-        XCTAssertEqual(rules[0].target, .m4a)
-        XCTAssertEqual(rules[0].quality, .balanced)
-        XCTAssertEqual(rules[1].sourceExtensions, ["mov", "mp4", "mkv"])
-        XCTAssertEqual(rules[1].target, .webm)
-        XCTAssertEqual(rules[2].sourceExtensions, ["jpeg", "jpg", "png", "webp", "tiff"])
-        XCTAssertEqual(rules[2].target, .avif)
-        XCTAssertNoThrow(try RuleValidator.validate(rules))
-    }
-
-    func testValidatorRejectsEnabledExtensionConflict() {
-        var rules = RuleCatalog.defaultRules
-        rules.append(.init(
-            id: UUID(uuidString: "00000000-0000-0000-0000-000000000004")!,
-            family: .audio,
-            sourceExtensions: [".WAV"],
-            target: .m4a,
-            quality: .smaller,
-            isEnabled: true
-        ))
-        XCTAssertThrowsError(try RuleValidator.validate(rules)) {
-            XCTAssertEqual($0 as? RuleValidationError, .duplicateSourceExtension("wav"))
-        }
-    }
-
-    func testTargetCompatibilityIsRestrictedByFamily() {
-        XCTAssertEqual(RuleCatalog.targets(for: .audio), [.m4a])
-        XCTAssertEqual(RuleCatalog.targets(for: .video), [.webm])
-        XCTAssertEqual(RuleCatalog.targets(for: .image), [.avif])
-    }
-}
-```
-
-- [ ] **Step 2: Run the rule tests and observe the missing-type failure**
-
-Run: `swift test --filter RuleCatalogTests`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: compilation fails because `RuleCatalog`, `ConversionRule`, and related enums do not exist.
 
-- [ ] **Step 3: Implement the value types, catalog, and validator**
+- [x] **Step 3: Implement the value types, catalog, and validator**
 
 Use lowercase serialized raw values, deterministic rule IDs, normalized extensions without a leading dot, and localized display labels only in the Mac target:
 
@@ -322,60 +231,26 @@ validator signature is `public static func validate(_ rules:
 [ConversionRule]) throws -> [ConversionRule]`; callers persist and use the
 returned normalized copy.
 
-- [ ] **Step 4: Run the rule tests and confirm they pass**
+- [x] **Step 4: Run the rule tests and confirm they pass**
 
-Run: `swift test --filter RuleCatalogTests`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: all `RuleCatalogTests` pass.
 
-- [ ] **Step 5: Add failing atomic persistence and migration tests**
+- [x] **Step 5: Add failing atomic persistence and migration tests**
 
-Use a unique temporary directory per test and assert a later intentional quality choice survives every load:
+Use a unique temporary directory per test and cover the missing-file default
+write, saved intentional quality choice, invalid-save
+byte preservation, schema-zero one-time migration, future-schema rejection, and
+normalized persistence cases.
 
-```swift
-final class MappingStoreTests: XCTestCase {
-    func testMissingFileLoadsDefaultsAndPersistsVersionOne() async throws {
-        let url = try temporaryDirectory().appending(path: "settings.json")
-        let store = MappingStore(fileURL: url)
-        let document = try await store.load()
-        XCTAssertEqual(document, SettingsDocument(
-            schemaVersion: 1,
-            rules: RuleCatalog.defaultRules
-        ))
-        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
-    }
+- [x] **Step 6: Run persistence tests and observe the missing-store failure**
 
-    func testLoadDoesNotOverwriteIntentionalQualityChoice() async throws {
-        let url = try temporaryDirectory().appending(path: "settings.json")
-        let store = MappingStore(fileURL: url)
-        var document = try await store.load()
-        document.rules[0].quality = .higherQuality
-        try await store.save(document)
-        XCTAssertEqual((try await store.load()).rules[0].quality, .higherQuality)
-    }
-
-    func testInvalidDocumentLeavesLastValidBytesUntouched() async throws {
-        let url = try temporaryDirectory().appending(path: "settings.json")
-        let store = MappingStore(fileURL: url)
-        _ = try await store.load()
-        let before = try Data(contentsOf: url)
-        var invalid = RuleCatalog.defaultRules
-        invalid.append(invalid[0])
-        await XCTAssertThrowsErrorAsync {
-            try await store.save(.init(schemaVersion: 1, rules: invalid))
-        }
-        XCTAssertEqual(try Data(contentsOf: url), before)
-    }
-}
-```
-
-- [ ] **Step 6: Run persistence tests and observe the missing-store failure**
-
-Run: `swift test --filter MappingStoreTests`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: compilation fails because `MappingStore` does not exist.
 
-- [ ] **Step 7: Implement the actor-backed JSON store**
+- [x] **Step 7: Implement the actor-backed JSON store**
 
 `MappingStore.load()` must create its parent directory, decode when the file exists, reject schema versions greater than one, apply `migrate(_:)`, validate rules, and write defaults once when missing. `save(_:)` validates before encoding with `.prettyPrinted` and `.sortedKeys`, writes with `.atomic`, and never mutates the existing file after a validation failure.
 
@@ -401,19 +276,19 @@ public protocol SettingsServing: Sendable {
 
 No migration rewrites a known rule field merely because a newer app default differs. A future migration may append a missing stable built-in rule and increment the schema exactly once.
 
-- [ ] **Step 8: Run Task 1 gates**
+- [x] **Step 8: Run Task 1 gates**
 
 Run:
 
 ```bash
-swift test
+swift run OptimizeAnythingCoreTests
 swift build
 git diff --check
 ```
 
 Expected: tests and build pass with no diff errors.
 
-- [ ] **Step 9: Commit and push Task 1**
+- [x] **Step 9: Commit and push Task 1**
 
 Stage only the Task 1 source, tests, and manifest. Commit `feat(settings): add validated conversion rule storage`, push, then require `git rev-list --left-right --count HEAD...@{u}` to print `0 0`.
 
@@ -434,7 +309,7 @@ Stage only the Task 1 source, tests, and manifest. Commit `feat(settings): add v
 - Consumes: `ConversionRule`, `RuleValidator`, `TargetFormat`, and `QualityPreset` from Task 1.
 - Produces: `AdmissionDecision`, `OutputPaths`, `ConversionPlan`, `InputMediaInfo`, `EncoderArguments.make(plan:media:)`, and `ConversionPlanner.plan(input:rule:jobID:)` for Tasks 3–5.
 
-- [ ] **Step 1: Write failing admission and path tests**
+- [x] **Step 1: Write failing admission and path tests**
 
 Cover mixed supported/unsupported input, uppercase extension normalization, directories, unreadable files, source preservation, and collision order:
 
@@ -467,13 +342,13 @@ func testOutputNamesFollowCollisionContract() throws {
 }
 ```
 
-- [ ] **Step 2: Run the focused tests and confirm missing-symbol failures**
+- [x] **Step 2: Run the focused tests and confirm missing-symbol failures**
 
-Run: `swift test --filter 'DropAdmissionServiceTests|OutputPathResolverTests'`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: compilation fails because the planning types do not exist.
 
-- [ ] **Step 3: Implement admission, plan, and path models**
+- [x] **Step 3: Implement admission, plan, and path models**
 
 Use these exact public shapes:
 
@@ -563,13 +438,13 @@ silently taking a default.
 
 `DropAdmissionService` resolves symlinks, accepts only regular readable files, and performs one deterministic first-match lookup among validated enabled rules. `OutputPathResolver` checks candidate existence in the source directory and always uses a UUID-bearing hidden temporary sibling. `ConversionPlanner` reads allocated size, obtains volume important-usage capacity, and throws `.insufficientDiskSpace` when the conservative family multiplier plus 64 MiB margin cannot fit.
 
-- [ ] **Step 4: Run admission and path tests to green**
+- [x] **Step 4: Run admission and path tests to green**
 
-Run: `swift test --filter 'DropAdmissionServiceTests|OutputPathResolverTests'`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: all focused tests pass.
 
-- [ ] **Step 5: Write failing argument tests for all nine profiles**
+- [x] **Step 5: Write failing argument tests for all nine profiles**
 
 Table-drive every family and quality. Assert complete arrays so an accidental FFmpeg default cannot silently change the product contract. Representative balanced assertions:
 
@@ -602,13 +477,13 @@ func testAlphaAVIFUsesColorAndAuxiliaryAlphaStreams() throws {
 }
 ```
 
-- [ ] **Step 6: Run argument tests and observe the missing-builder failure**
+- [x] **Step 6: Run argument tests and observe the missing-builder failure**
 
-Run: `swift test --filter EncoderArgumentsTests`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: compilation fails because `EncoderArguments` does not exist.
 
-- [ ] **Step 7: Implement explicit profile argument construction**
+- [x] **Step 7: Implement explicit profile argument construction**
 
 Map qualities exactly:
 
@@ -629,19 +504,19 @@ private static let imageCRF: [QualityPreset: String] = [
 
 Every command starts with `-nostdin -hide_banner -loglevel error -n`, includes `-progress pipe:1`, maps only the primary relevant streams, and ends with the temporary output path. Do not add `-y`. For alpha AVIF, encode the color and extracted grayscale alpha as two AV1 streams; for opaque input, map only the primary video stream.
 
-- [ ] **Step 8: Run Task 2 gates**
+- [x] **Step 8: Run Task 2 gates**
 
 Run:
 
 ```bash
-swift test
+swift run OptimizeAnythingCoreTests
 swift build
 git diff --check
 ```
 
 Expected: all accumulated tests and the build pass.
 
-- [ ] **Step 9: Commit and push Task 2**
+- [x] **Step 9: Commit and push Task 2**
 
 Stage only Task 2 paths. Commit `feat(planning): add safe media conversion plans`, push, and prove `0 0` upstream parity.
 
@@ -717,7 +592,7 @@ The same test file defines `makeService(executor:)` with fixed executable URLs
 `/tools/ffmpeg` and `/tools/ffprobe`, a real `FileManager`, and no machine tool
 lookup. This is the only `makeService` helper referenced below.
 
-- [ ] **Step 1: Write failing probe and progress parser tests**
+- [x] **Step 1: Write failing probe and progress parser tests**
 
 Inject a fake executor so parsing tests never require a developer-installed binary:
 
@@ -748,13 +623,13 @@ func testProgressParserClampsOutTimeToDuration() {
 }
 ```
 
-- [ ] **Step 2: Run focused parser tests and observe missing types**
+- [x] **Step 2: Run focused parser tests and observe missing types**
 
-Run: `swift test --filter 'FFprobeClientTests|FFmpegRunnerTests'`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: compilation fails because command and parser types do not exist.
 
-- [ ] **Step 3: Implement the command boundary and probe parser**
+- [x] **Step 3: Implement the command boundary and probe parser**
 
 Use immutable request/result values and an actor to own live `Process` instances:
 
@@ -799,13 +674,13 @@ public struct FFmpegRunner: Sendable {
 
 `FFprobeClient` uses `-v error -show_format -show_streams -of json <path>`, rejects a nonzero status, and decodes only needed fields. Alpha detection recognizes `rgba`, `bgra`, `argb`, `abgr`, any pixel format containing `yuva`, and a second AVIF auxiliary video stream.
 
-- [ ] **Step 4: Run parser tests to green**
+- [x] **Step 4: Run parser tests to green**
 
-Run: `swift test --filter 'FFprobeClientTests|FFmpegRunnerTests'`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: all focused tests pass.
 
-- [ ] **Step 5: Write failing transactional conversion tests**
+- [x] **Step 5: Write failing transactional conversion tests**
 
 Cover success, nonzero exit, zero-byte output, mismatched postcondition, cancel, and final-name race. The success fake writes bytes to the temporary path and returns an FFprobe result matching the target:
 
@@ -837,13 +712,13 @@ func testNonzeroExitRemovesTemporaryAndDoesNotFinalize() async throws {
 }
 ```
 
-- [ ] **Step 6: Run conversion tests and observe the missing-service failure**
+- [x] **Step 6: Run conversion tests and observe the missing-service failure**
 
-Run: `swift test --filter ConversionServiceTests`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: compilation fails because `ConversionService` and `ConversionOutcome` do not exist.
 
-- [ ] **Step 7: Implement conversion as one cleanup-safe transaction**
+- [x] **Step 7: Implement conversion as one cleanup-safe transaction**
 
 The service owns these dependencies and phases:
 
@@ -867,19 +742,19 @@ Execution order is input probe, argument construction, FFmpeg run, nonzero/cance
 
 Postconditions are AAC audio in an M4A-family container, VP9 video plus Opus when audio exists in WebM, and AV1 video in AVIF. For still images, assert dimensions and alpha auxiliary presence when the input reported alpha. For video, assert source dimensions and orientation contract. For audio, assert channel count when the target supports it.
 
-- [ ] **Step 8: Run Task 3 gates**
+- [x] **Step 8: Run Task 3 gates**
 
 Run:
 
 ```bash
-swift test
+swift run OptimizeAnythingCoreTests
 swift build
 git diff --check
 ```
 
 Expected: every unit test and build passes; no installed FFmpeg is required.
 
-- [ ] **Step 9: Commit and push Task 3**
+- [x] **Step 9: Commit and push Task 3**
 
 Stage Task 3 paths explicitly. Commit `feat(conversion): run and validate local media conversions`, push, and prove `0 0`.
 
@@ -903,7 +778,7 @@ provides `waitUntilStarted(_:)`, `finish(_:with:)`, and
 `finishAllSuccessfully()`, and records cancel calls. Every wait uses the shared
 bounded `eventually` helper.
 
-- [ ] **Step 1: Write failing serial and drain-boundary tests**
+- [x] **Step 1: Write failing serial and drain-boundary tests**
 
 Use a controlled fake whose continuation lets the test prove no second call begins early:
 
@@ -936,13 +811,13 @@ func testDropsDuringActiveWorkShareOneDrainSummary() async throws {
 }
 ```
 
-- [ ] **Step 2: Run queue tests and observe missing queue types**
+- [x] **Step 2: Run queue tests and observe missing queue types**
 
-Run: `swift test --filter 'ConversionQueueTests|DrainSummaryTests'`
+Run: `swift run OptimizeAnythingCoreTests`
 
 Expected: compilation fails because queue and summary types do not exist.
 
-- [ ] **Step 3: Implement immutable snapshots and terminal summaries**
+- [x] **Step 3: Implement immutable snapshots and terminal summaries**
 
 Use these observable values:
 
@@ -997,23 +872,23 @@ public actor ConversionQueue: QueueServing {
 
 `ConversionQueue` is an actor. It starts a single private drain task only when transitioning from idle with queued jobs. Progress is clamped and published no more frequently than every 100 ms except terminal `1.0`. Terminal state cannot transition. `retry(failedJobID:with:)` accepts a newly rebuilt plan from the caller, verifies the referenced job failed, preserves the prior terminal job, and enqueues the new ID. `drainEvents()` emits once only when no active or queued work remains and clears the accumulator after emission; session jobs remain in snapshots until app termination.
 
-- [ ] **Step 4: Add cancel, retry, byte-savings, and terminal-state tests**
+- [x] **Step 4: Add cancel, retry, byte-savings, and terminal-state tests**
 
 Assert cancel forwards to `ConversionServicing.cancel(jobID:)`, removes temp through the service, and continues with the next job. Assert byte savings uses `max(0, sourceByteCount - outputByteCount)` and never reports negative savings. Assert retry does not mutate the prior failed job.
 
-- [ ] **Step 5: Run Task 4 gates**
+- [x] **Step 5: Run Task 4 gates**
 
 Run:
 
 ```bash
-swift test
+swift run OptimizeAnythingCoreTests
 swift build
 git diff --check
 ```
 
 Expected: queue timing tests are deterministic and all checks pass.
 
-- [ ] **Step 6: Commit and push Task 4**
+- [x] **Step 6: Commit and push Task 4**
 
 Stage Task 4 paths. Commit `feat(queue): orchestrate serial conversion batches`, push, and prove `0 0` parity.
 
@@ -1052,7 +927,11 @@ have source in this task:
 
 .target(name: "OptimizeAnythingMac", dependencies: ["OptimizeAnythingCore"]),
 .executableTarget(name: "OptimizeAnythingApp", dependencies: ["OptimizeAnythingMac"]),
-.testTarget(name: "OptimizeAnythingMacTests", dependencies: ["OptimizeAnythingMac"]),
+.executableTarget(
+    name: "OptimizeAnythingMacTests",
+    dependencies: ["OptimizeAnythingMac"],
+    path: "Tests/OptimizeAnythingMacTests"
+),
 ```
 
 `AppViewModel` depends on protocols instead of concrete globals so tests can
@@ -1086,7 +965,7 @@ with recorded calls and deterministic `AsyncStream` continuations, plus
 `ViewModelDependencies(notificationStatus:)` used below. Every continuation is
 finished in test teardown.
 
-- [ ] **Step 1: Write failing pasteboard URL and view-model tests**
+- [x] **Step 1: Write failing pasteboard URL and view-model tests**
 
 Build an `NSPasteboard` with file URLs and non-file payloads. Assert only file URLs are returned in pasteboard order. Use fake store, planner, queue, notification, and Finder protocols for `AppViewModel`:
 
@@ -1112,13 +991,13 @@ func testDeniedNotificationKeepsDrainSummaryInPopover() async {
 }
 ```
 
-- [ ] **Step 2: Run Mac tests and observe missing UI types**
+- [x] **Step 2: Run Mac tests and observe missing UI types**
 
-Run: `swift test --filter 'StatusBarDropViewTests|AppViewModelTests|LocalNotificationServiceTests'`
+Run: `swift run OptimizeAnythingMacTests`
 
 Expected: compilation fails because the Mac target files do not exist.
 
-- [ ] **Step 3: Implement the MainActor adapter and application dependency graph**
+- [x] **Step 3: Implement the MainActor adapter and application dependency graph**
 
 `AppViewModel` is `@MainActor`, conforms to `ObservableObject`, and exposes published settings, snapshot, admission errors, last drain summary, drag highlight, and tool availability. It starts tasks consuming queue snapshot/drain streams, but cancels them in `deinit`. It calls admission and planning off the main actor and returns only immutable values.
 
@@ -1130,7 +1009,7 @@ Expected: compilation fails because the Mac target files do not exist.
 
 It resolves bundled `ffmpeg` and `ffprobe`, builds the core dependency graph once, creates `AppViewModel`, then creates the status bar and settings controllers. Missing tools are an explicit unavailable state that rejects conversion but still allows settings and quit.
 
-- [ ] **Step 4: Implement the direct status item drag surface**
+- [x] **Step 4: Implement the direct status item drag surface**
 
 Use an `NSView` overlay installed inside `NSStatusBarButton` because it can own closure-based `NSDraggingDestination` methods while preserving the native status item:
 
@@ -1154,28 +1033,29 @@ final class StatusBarDropView: NSView {
 
 The overlay uses autoresizing width/height, forwards click to popover toggle, and extracts URLs with `readObjects(forClasses:options:)`. `StatusBarController` changes `statusItem.length` from square to a measured expanded width while dragging, uses a monochrome compression SF Symbol when idle, displays `Drop to optimize` while highlighted, displays unfinished count while running, and shows a warning symbol after a failed drain until the popover opens.
 
-- [ ] **Step 5: Implement the SwiftUI popover and constrained settings**
+- [x] **Step 5: Implement the SwiftUI popover and constrained settings**
 
 The 360-point popover shows title and aggregate state, active job first, queued jobs, then current-session terminal results. `JobRowView` exposes cancel only for active work, retry only for failed work, `Show Output` only for success, and `Show Source` for failure. The footer contains `Settings…`, `Show Output`, and `Quit`.
 
 `SettingsView` lists rules by family. Editing source extensions normalizes on commit and validates before save. Target pickers use `RuleCatalog.targets(for:)`; quality picker uses exactly three localized labels. Add, disable, remove, and restore-default actions all save a complete valid `SettingsDocument`. A failed save leaves visible rules at the last saved document and displays `RuleValidationError` beside the editor.
 
-- [ ] **Step 6: Implement local notification and Finder services**
+- [x] **Step 6: Implement local notification and Finder services**
 
 Wrap `UNUserNotificationCenter` behind a protocol with `authorizationStatus()`, `requestAuthorizationIfNeeded()`, and `deliver(_:)`. The request occurs only when `AppViewModel` accepts its first drop. Notification title is `Optimization complete` or `Optimization finished with issues`; body includes counts and formatted bytes saved, never a full path. Store the last output path only in notification `userInfo` for local click handling. `UNUserNotificationCenterDelegate` reveals it with `NSWorkspace.activateFileViewerSelecting`.
 
 When authorization is denied or delivery errors, leave `lastDrainSummary` published and do not fail any job. When the app is active, delegate presentation includes banner and sound so the native result is still observable.
 
-- [ ] **Step 7: Implement accessory app launch and guarded quit**
+- [x] **Step 7: Implement accessory app launch and guarded quit**
 
 `main.swift` creates `NSApplication.shared`, assigns `AppDelegate`, sets `.accessory`, and calls `run()`. `AppDelegate.applicationDidFinishLaunching` retains `ApplicationController`. Before termination, if unfinished count is nonzero, return `.terminateLater`, show an `NSAlert` with `Keep Waiting` and `Cancel Jobs and Quit`, and reply only after the chosen path settles.
 
-- [ ] **Step 8: Run Task 5 gates and a source-level app smoke**
+- [x] **Step 8: Run Task 5 gates and a source-level app smoke**
 
 Run:
 
 ```bash
-swift test
+swift run OptimizeAnythingCoreTests
+swift run OptimizeAnythingMacTests
 swift build -c release --product OptimizeAnythingApp
 .build/release/OptimizeAnythingApp &
 pgrep -x OptimizeAnythingApp
@@ -1183,7 +1063,7 @@ pgrep -x OptimizeAnythingApp
 
 Terminate the smoke process normally after confirming it stays alive. Expected: tests/build pass, one process exists, and the app exposes a status item even though packaged tools are not yet present.
 
-- [ ] **Step 9: Commit and push Task 5**
+- [x] **Step 9: Commit and push Task 5**
 
 Stage Task 5 paths. Commit `feat(macos): add menu bar drop and settings experience`, push, and prove `0 0`.
 
@@ -1203,7 +1083,7 @@ Stage Task 5 paths. Commit `feat(macos): add menu bar drop and settings experien
 - Consumes: Release executable from Task 5 and the tool paths expected by `ApplicationController`.
 - Produces: `build/vendor/ffmpeg/bin/{ffmpeg,ffprobe}` and `dist/Optimize Anything.app` with verified nested signatures and licenses.
 
-- [ ] **Step 1: Record exact source versions, URLs, and verified SHA-256 values**
+- [x] **Step 1: Record exact source versions, URLs, and verified SHA-256 values**
 
 `Dependencies/ffmpeg/versions.env` contains only these shell-safe constants:
 
@@ -1222,7 +1102,7 @@ OPUS_URL=https://downloads.xiph.org/releases/opus/opus-1.5.2.tar.gz
 OPUS_SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
 ```
 
-- [ ] **Step 2: Write the packaging test before the build scripts**
+- [x] **Step 2: Write the packaging test before the build scripts**
 
 `scripts/test-packaging.sh` exits nonzero unless all of these hold:
 
@@ -1244,7 +1124,7 @@ Run: `zsh scripts/test-packaging.sh`
 
 Expected: fails immediately because the app bundle does not exist.
 
-- [ ] **Step 3: Implement the pinned source builder**
+- [x] **Step 3: Implement the pinned source builder**
 
 `scripts/build-ffmpeg.sh` uses `set -euo pipefail`, sources `versions.env`, works only below repository-local `build/vendor`, downloads through `curl --fail --location`, verifies each archive with `shasum -a 256 -c`, and never trusts an existing archive until it re-verifies. Build static arm64 dependencies in this order: Opus with Autotools, libvpx with its configure script, libaom with CMake, then FFmpeg.
 
@@ -1266,9 +1146,9 @@ FFmpeg configure must include:
 --enable-libopus
 ```
 
-Pass repository-local include/library/pkg-config paths, `--pkg-config-flags=--static`, and a deployment target of macOS 14. Copy only `ffmpeg` and `ffprobe` to `build/vendor/ffmpeg/bin`. Write the exact configure line and `git diff` equivalent for unmodified release tarballs to `build/vendor/ffmpeg/source-offer/BUILD.txt`, then copy the license files and source archives into that source-offer directory. Do not invoke or copy the machine's existing GPL-enabled FFmpeg.
+Pass repository-local include/library/pkg-config paths, `--pkg-config-flags=--static`, and a deployment target of macOS 14. Copy only `ffmpeg` and `ffprobe` to `build/vendor/ffmpeg/bin`. Write the exact configure line and `git diff` equivalent for unmodified release tarballs to `build/vendor/ffmpeg/source-offer/BUILD.txt`, then copy the hash manifest, license files, and source archives into that source-offer directory. Do not invoke or copy the machine's existing GPL-enabled FFmpeg.
 
-- [ ] **Step 4: Implement deterministic app bundle assembly**
+- [x] **Step 4: Implement deterministic app bundle assembly**
 
 `App/Info.plist` fixes these values:
 
@@ -1285,13 +1165,13 @@ Pass repository-local include/library/pkg-config paths, `--pkg-config-flags=--st
 <key>NSHighResolutionCapable</key><true/>
 ```
 
-`scripts/build-app.sh` builds the arm64 release executable, reconstructs only the explicit `dist/Optimize Anything.app` target, copies the executable as `Contents/MacOS/OptimizeAnything`, copies tools and notices to `Contents/Resources`, strips release symbols, signs FFmpeg and FFprobe first with ad-hoc identity `-`, signs the outer bundle last, then runs `scripts/test-packaging.sh`. It never deletes a path derived from an unset variable or a path broader than the exact app bundle.
+`scripts/build-app.sh` builds the arm64 release executable, reconstructs only the explicit `dist/Optimize Anything.app` target, copies the executable as `Contents/MacOS/OptimizeAnything`, copies tools, notices, and the corresponding source offer to `Contents/Resources`, strips release symbols, signs FFmpeg and FFprobe first with ad-hoc identity `-`, signs the outer bundle last, then runs `scripts/test-packaging.sh`. It never deletes a path derived from an unset variable or a path broader than the exact app bundle.
 
-- [ ] **Step 5: Write third-party notice content**
+- [x] **Step 5: Write third-party notice content**
 
-`THIRD_PARTY_NOTICES.md` identifies FFmpeg 8.0 under LGPL-2.1-or-later, libvpx 1.15.0 under BSD-3-Clause, libaom 3.12.1 under BSD-2-Clause, and Opus 1.5.2 under BSD-3-Clause. It states the exact corresponding source location inside `build/vendor/ffmpeg/source-offer` for local builds and the requirement to host that source beside any future distributed binary.
+`THIRD_PARTY_NOTICES.md` identifies FFmpeg 8.0 under LGPL-2.1-or-later, libvpx 1.15.0 under BSD-3-Clause, libaom 3.12.1 under BSD-2-Clause, and Opus 1.5.2 under BSD-3-Clause. `scripts/build-app.sh` copies the matching source offer into `Contents/Resources/source-offer`, and the notice requires it to remain with every distributed binary.
 
-- [ ] **Step 6: Build tools and app, then run packaging gates**
+- [x] **Step 6: Build tools and app, then run packaging gates**
 
 Run:
 
@@ -1306,7 +1186,7 @@ git diff --check
 
 Expected: binaries report arm64, no dynamic dependency points into Homebrew or a developer workspace, signatures pass, build configuration contains both disable flags, and required encoders are present.
 
-- [ ] **Step 7: Commit and push Task 6**
+- [x] **Step 7: Commit and push Task 6**
 
 Do not commit `build/` or `dist/`. Stage only the manifest, scripts, Info.plist, notice, and `.gitignore`. Commit `build(macos): package reproducible media toolchain`, push, and prove `0 0`.
 
@@ -1326,11 +1206,11 @@ Do not commit `build/` or `dist/`. Stage only the manifest, scripts, Info.plist,
 - Consumes: Completed core, queue, native UI, and app bundle.
 - Produces: Deterministic fixture generation, automated real-codec acceptance, runtime process checks, and an explicit manual-native evidence checklist.
 
-Add `.testTarget(name: "OptimizeAnythingIntegrationTests", dependencies:
-["OptimizeAnythingCore"])` to `Package.swift` in this task, when the integration
-test source is created.
+Add an `.executableTarget` named `OptimizeAnythingIntegrationTests`, depending
+on `OptimizeAnythingCore` and using `Tests/OptimizeAnythingIntegrationTests`,
+when the integration test source is created.
 
-- [ ] **Step 1: Generate deterministic fixtures with the bundled tools**
+- [x] **Step 1: Generate deterministic fixtures with the bundled tools**
 
 `scripts/generate-fixtures.sh <directory>` recreates only its explicit target and uses bundled FFmpeg lavfi inputs:
 
@@ -1343,39 +1223,44 @@ ffmpeg -nostdin -hide_banner -loglevel error -f lavfi -i 'color=c=red@0.4:s=96x6
 
 The script records each source SHA-256 before tests.
 
-- [ ] **Step 2: Write real conversion integration tests**
+- [x] **Step 2: Write real conversion integration tests**
 
-Tests require `OPTIMIZE_ANYTHING_TOOL_DIR`; they skip only when invoked by plain `swift test` without that variable. `scripts/integration-test.sh` verifies tools exist, sets the variable, generates fixtures in a fresh `mktemp -d` directory, runs the integration test class, and therefore never skips in the acceptance gate.
+Tests require `OPTIMIZE_ANYTHING_TOOL_DIR` and `OPTIMIZE_ANYTHING_FIXTURE_DIR`;
+the integration executable skips only when invoked directly without them.
+`scripts/integration-test.sh` verifies tools exist, sets both variables,
+generates fixtures in a fresh `mktemp -d` directory, runs the executable, and
+therefore never skips in the acceptance gate.
 
 The test class calls the real `ConversionService` and asserts:
 
 ```swift
-XCTAssertEqual(try probe(outputM4A).audioCodec, "aac")
-XCTAssertTrue(try probe(outputM4A).containerNames.contains("mov"))
-XCTAssertEqual(try probe(outputWebM).videoCodec, "vp9")
-XCTAssertEqual(try probe(outputWebM).audioCodec, "opus")
-XCTAssertEqual(try probe(outputAVIF).videoCodec, "av1")
-XCTAssertEqual(try probe(outputAVIF).width, 96)
-XCTAssertEqual(try probe(outputAVIF).height, 64)
-XCTAssertTrue(try probe(alphaAVIF).hasAlpha)
-XCTAssertEqual(try sha256(source), originalHash)
-XCTAssertEqual(try hiddenTemporaryFiles(in: fixtureDirectory), [])
+try requireEqual(outputM4A.audioCodec, "aac", "M4A codec")
+try require(outputM4A.containerNames.contains("mov"), "M4A container")
+try requireEqual(outputWebM.videoCodec, "vp9", "WebM video codec")
+try requireEqual(outputWebM.audioCodec, "opus", "WebM audio codec")
+try requireEqual(outputAVIF.videoCodec, "av1", "AVIF codec")
+try requireEqual(outputAVIF.width, 96, "AVIF width")
+try requireEqual(outputAVIF.height, 64, "AVIF height")
+try require(alphaAVIF.hasAlpha, "Alpha AVIF")
+try requireEqual(try sha256(source), originalHash, "source hash")
+try requireEqual(try hiddenTemporaryFiles(in: fixtureDirectory), [], "temporary files")
 ```
 
 Add collision bytes before conversion and assert they remain byte-identical. Add a corrupt `.mov` and a long generated job canceled after the process begins; neither may create a final or temporary artifact.
 
-- [ ] **Step 3: Add a test-only ingest launch argument without weakening real drag acceptance**
+- [x] **Step 3: Add a test-only ingest launch argument without weakening real drag acceptance**
 
 When launched with `--ingest <absolute-file>...`, `AppDelegate` forwards those file URLs through the exact `AppViewModel.handleDrop` path after startup. This is not a second conversion implementation; it is a deterministic automation seam for packaged runtime smoke. The normal launch has no arguments and exposes the direct status item drag target.
 
 `scripts/runtime-smoke.sh` launches the packaged app with generated fixtures, waits with a bounded deadline for expected siblings, checks one process, validates outputs with bundled FFprobe, confirms source hashes, reads `LSUIElement=true`, and terminates the app normally. A timeout prints app logs and exits nonzero.
 
-- [ ] **Step 4: Create the full check script**
+- [x] **Step 4: Create the full check script**
 
 `scripts/check.sh` runs in this order and stops on the first failure:
 
 ```bash
-swift test
+swift run OptimizeAnythingCoreTests
+swift run OptimizeAnythingMacTests
 swift build -c release --product OptimizeAnythingApp
 zsh scripts/build-app.sh
 zsh scripts/integration-test.sh
@@ -1386,7 +1271,7 @@ git diff --check
 
 It reports the test counts and artifact path. It does not suppress skipped tests or ignore a failing command.
 
-- [ ] **Step 5: Run automated acceptance**
+- [x] **Step 5: Run automated acceptance**
 
 Run: `zsh scripts/check.sh`
 
@@ -1407,7 +1292,7 @@ Launch `dist/Optimize Anything.app` normally. Using Finder and the generated fix
 
 Capture concrete evidence where the environment allows it. If macOS TCC, notification settings, GUI access, or native pixel capture is unavailable, report that item separately as unverified; automated checks cannot stand in for it.
 
-- [ ] **Step 7: Commit and push Task 7**
+- [x] **Step 7: Commit and push Task 7**
 
 Stage Task 7 test, script, and automation-seam paths. Commit `test(integration): verify real media optimization flows`, push, and prove `0 0`.
 
@@ -1422,17 +1307,17 @@ Stage Task 7 test, script, and automation-seam paths. Commit `test(integration):
 - Consumes: Verified commands and observed behavior from Tasks 1–7.
 - Produces: A truthful private-repository landing page and checked-off durable plan.
 
-- [ ] **Step 1: Write README from verified behavior**
+- [x] **Step 1: Write README from verified behavior**
 
 Document product purpose, macOS 14/Apple Silicon requirement, supported default mappings and exact quality profiles, direct menu bar and popover drop flows, output naming and original preservation, settings location, notification behavior, local build commands, FFmpeg source/license workflow, test commands, privacy statement, known MVP exclusions, and troubleshooting for missing notification permission or insufficient disk space.
 
 Do not claim Developer ID signing, notarization, Intel support, folder recursion, persistent history, automatic updates, or a public release.
 
-- [ ] **Step 2: Reconcile spec and plan status with evidence**
+- [x] **Step 2: Reconcile spec and plan status with evidence**
 
 Change the PRD status to `Implemented and verified` only if every MVP Definition of Done item has authoritative evidence. Check each plan box only after its command or observation succeeds. Leave unavailable native evidence unchecked and describe it in the final report rather than weakening its requirement.
 
-- [ ] **Step 3: Run the complete final gate from a clean build state**
+- [x] **Step 3: Run the complete final gate from a clean build state**
 
 Run:
 

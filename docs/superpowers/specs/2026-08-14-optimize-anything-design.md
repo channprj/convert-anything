@@ -1,6 +1,6 @@
 # Optimize Anything Product Requirements and Design
 
-- **Status:** Approved for implementation
+- **Status:** Implemented; automated acceptance verified, native interaction acceptance partial
 - **Date:** 2026-08-14
 - **Repository:** `channprj/optimize-anything` (private)
 - **Initial release:** Native Apple Silicon macOS MVP
@@ -205,7 +205,7 @@ NSStatusBarButton / popover drop area
                                       v
                        temporary output -> atomic move
                                       |
-                   JobStore -> popover / NotificationService
+             Queue snapshots -> popover / NotificationService
 ```
 
 Component boundaries:
@@ -230,8 +230,8 @@ Component boundaries:
   shell, parses machine-readable progress, and returns structured exit data.
 - **NotificationService:** Wraps authorization, local notification delivery,
   and notification click handling behind a testable protocol.
-- **JobStore:** Publishes active, queued, and current-session terminal jobs to
-  AppKit and SwiftUI without persisting media paths after app termination.
+- **Queue snapshots:** Publish active, queued, and current-session terminal jobs
+  to AppKit and SwiftUI without persisting media paths after app termination.
 
 ### Core Models and Invariants
 
@@ -299,9 +299,9 @@ and SHA-256 values, records configure arguments, and emits exact corresponding
 source and license notices. The repository does not treat the GPL-enabled
 FFmpeg already installed on the development machine as a release dependency.
 
-The application About view and `THIRD_PARTY_NOTICES.md` identify FFmpeg and its
-license. A release process must make the corresponding source archive available
-beside any distributed binary before public distribution is added to scope.
+`THIRD_PARTY_NOTICES.md` identifies FFmpeg and its license. Every assembled app
+includes the matching source archives, license texts, hash manifest, and build
+instructions under `Contents/Resources/source-offer`.
 
 ### Error Handling
 
@@ -381,7 +381,7 @@ assert with `ffprobe` that:
 
 #### App and Runtime Checks
 
-- `swift test` passes under the declared deployment target.
+- The executable Swift test harnesses pass under the declared deployment target.
 - A release build produces `Optimize Anything.app` with `LSUIElement`, bundled
   executable tools, resources, license notices, and no unexpected dynamic
   library references.
@@ -403,6 +403,21 @@ builds; the real drag-to-status-item flow produces verified outputs beside the
 fixtures without changing sources; a native completion notification is observed
 when permission is available; and local `main`, its tracking branch, and the
 live GitHub remote are byte-equivalent.
+
+### Verification Record — 2026-08-14
+
+Automated acceptance is complete: 56 core tests, 4 macOS adapter tests, and 6
+real-media integration tests pass. The packaged arm64 app is ad-hoc signed,
+contains the verified LGPL-compatible toolchain and corresponding source, and
+converts WAV, MOV, opaque PNG, and alpha PNG through the application ingest path
+while preserving source SHA-256 values. A GUI-session launch also confirmed the
+process is background-only with `LSUIElement=true`.
+
+The full Finder-to-status-item gesture, hover pixels, popover actions under
+interactive use, Finder selection, and granted/denied notification banners were
+not authoritatively observed in this automated session. Those native interaction
+items remain required before changing this document's status to `Implemented and
+verified` or treating the MVP Definition of Done as fully closed.
 
 ## 5. Risks & Roadmap
 
