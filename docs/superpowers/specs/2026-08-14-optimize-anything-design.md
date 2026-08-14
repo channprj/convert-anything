@@ -1,6 +1,6 @@
 # Optimize Anything Product Requirements and Design
 
-- **Status:** Approved product direction; written specification awaiting final user review
+- **Status:** Approved for implementation
 - **Date:** 2026-08-14
 - **Repository:** `channprj/optimize-anything` (private)
 - **Initial release:** Native Apple Silicon macOS MVP
