@@ -1329,11 +1329,11 @@ git diff --check
 
 Expected: checks pass and only Task 8 documentation paths are modified.
 
-- [ ] **Step 4: Commit and push Task 8**
+- [x] **Step 4: Commit and push Task 8**
 
 Because `docs/superpowers` is globally ignored, explicitly force-stage only the intended tracked spec and plan if ordinary staging omits them. Stage `README.md` normally. Commit `docs: document local optimization workflow`, push, and prove `0 0`.
 
-- [ ] **Step 5: Perform the `$gcpr` completion audit**
+- [x] **Step 5: Perform the `$gcpr` completion audit**
 
 Re-read the original Korean request and the complete PRD. For every story OA-1 through OA-5 and every Success Criterion, record the current authoritative evidence. Run:
 
