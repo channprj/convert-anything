@@ -7,7 +7,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
   private var terminationPending = false
 
   func applicationDidFinishLaunching(_ notification: Notification) {
-    controller = ApplicationController()
+    let controller = ApplicationController()
+    self.controller = controller
+    let ingestURLs = Self.ingestURLs(from: ProcessInfo.processInfo.arguments)
+    guard !ingestURLs.isEmpty else { return }
+    Task { await controller.ingest(ingestURLs) }
   }
 
   func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -42,5 +46,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
       sender.reply(toApplicationShouldTerminate: model.snapshot.unfinishedCount == 0)
     }
     return .terminateLater
+  }
+
+  private static func ingestURLs(from arguments: [String]) -> [URL] {
+    guard let marker = arguments.firstIndex(of: "--ingest") else { return [] }
+    return arguments[arguments.index(after: marker)...].compactMap { path in
+      guard path.hasPrefix("/") else { return nil }
+      return URL(fileURLWithPath: path).standardizedFileURL
+    }
   }
 }

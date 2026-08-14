@@ -32,10 +32,18 @@ public struct FFprobeClient: Sendable {
       throw MediaProbeError.invalidResponse
     }
 
-    let containerNames =
+    var containerNames =
       response.format?.formatName?
       .split(separator: ",")
       .map { String($0).lowercased() } ?? []
+    let formatTags = response.format?.tags ?? [:]
+    let majorBrand = formatTags["major_brand"]?.lowercased()
+    let compatibleBrands = formatTags["compatible_brands"]?.lowercased() ?? ""
+    if !containerNames.contains("avif")
+      && (majorBrand == "avif" || compatibleBrands.contains("avif"))
+    {
+      containerNames.append("avif")
+    }
     let videoStreams = response.streams.filter { $0.codecType == "video" }
     let video = videoStreams.first
     let audio = response.streams.first { $0.codecType == "audio" }
@@ -87,10 +95,12 @@ private struct ProbeResponse: Decodable {
 private struct ProbeFormat: Decodable {
   let formatName: String?
   let duration: String?
+  let tags: [String: String]?
 
   private enum CodingKeys: String, CodingKey {
     case formatName = "format_name"
     case duration
+    case tags
   }
 }
 

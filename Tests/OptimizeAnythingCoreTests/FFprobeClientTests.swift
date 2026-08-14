@@ -34,7 +34,7 @@ let ffprobeClientTests: [TestCase] = [
   },
   TestCase("probe recognizes AVIF auxiliary alpha and rotation metadata") {
     let executor = FakeCommandExecutor.probeJSON(
-      #"{"format":{"format_name":"avif"},"streams":[{"codec_type":"video","codec_name":"av1","pix_fmt":"yuv420p","width":96,"height":64,"side_data_list":[{"rotation":90}]},{"codec_type":"video","codec_name":"av1","pix_fmt":"gray"}]}"#
+      #"{"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","tags":{"major_brand":"avif","compatible_brands":"avifmif1miafMA1A"}},"streams":[{"codec_type":"video","codec_name":"av1","pix_fmt":"yuv420p","width":96,"height":64,"side_data_list":[{"rotation":90}]},{"codec_type":"video","codec_name":"av1","pix_fmt":"gray"}]}"#
     )
     let client = FFprobeClient(
       executable: URL(fileURLWithPath: "/tools/ffprobe"),
@@ -44,6 +44,7 @@ let ffprobeClientTests: [TestCase] = [
     let info = try await client.probe(URL(fileURLWithPath: "/tmp/alpha.avif"), commandID: UUID())
 
     try expectTrue(info.hasAlpha)
+    try expectTrue(info.containerNames.contains("avif"))
     try expectEqual(info.rotationDegrees, 90)
   },
   TestCase("probe rejects malformed JSON rather than inventing defaults") {

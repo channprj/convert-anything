@@ -51,6 +51,10 @@ public final class ApplicationController {
     Task { await model.loadSettings() }
   }
 
+  public func ingest(_ urls: [URL]) async {
+    await model.handleDrop(urls)
+  }
+
   private static func settingsURL(fileManager: FileManager) -> URL {
     let applicationSupport =
       fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first

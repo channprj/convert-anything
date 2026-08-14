@@ -23,5 +23,10 @@ let package = Package(
       dependencies: ["OptimizeAnythingMac"],
       path: "Tests/OptimizeAnythingMacTests"
     ),
+    .executableTarget(
+      name: "OptimizeAnythingIntegrationTests",
+      dependencies: ["OptimizeAnythingCore"],
+      path: "Tests/OptimizeAnythingIntegrationTests"
+    ),
   ]
 )
