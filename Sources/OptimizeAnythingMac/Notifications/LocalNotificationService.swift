@@ -49,13 +49,7 @@ public final class LocalNotificationService: NSObject, NotificationServing,
     let hasIssues = summary.failedCount > 0 || summary.canceledCount > 0
     content.title = hasIssues ? "Optimization finished with issues" : "Optimization complete"
 
-    var components = ["\(summary.succeededCount) completed"]
-    if summary.failedCount > 0 { components.append("\(summary.failedCount) failed") }
-    if summary.canceledCount > 0 { components.append("\(summary.canceledCount) canceled") }
-    let byteFormatter = ByteCountFormatter()
-    byteFormatter.countStyle = .file
-    components.append("\(byteFormatter.string(fromByteCount: summary.bytesSaved)) saved")
-    content.body = components.joined(separator: " · ")
+    content.body = CompletionSummaryFormatter.text(for: summary)
     content.sound = .default
     if let output = summary.lastSuccessfulOutput {
       content.userInfo[Self.outputPathUserInfoKey] = output.path

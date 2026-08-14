@@ -114,7 +114,7 @@ public struct PopoverView: View {
       return "\(model.snapshot.unfinishedCount) item(s) remaining"
     }
     if let summary = model.lastDrainSummary {
-      return "\(summary.succeededCount) completed · \(summary.failedCount) failed"
+      return CompletionSummaryFormatter.text(for: summary)
     }
     return "Local, private media conversion"
   }

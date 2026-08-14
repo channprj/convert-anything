@@ -3,7 +3,7 @@ import OptimizeAnythingCore
 import OptimizeAnythingMac
 
 let localNotificationServiceTests: [MacTestCase] = [
-  MacTestCase("notification content summarizes counts without a full path") {
+  MacTestCase("completion summary includes every drain count without a full path") {
     let summary = DrainSummary(
       succeededCount: 2,
       failedCount: 1,
@@ -17,6 +17,8 @@ let localNotificationServiceTests: [MacTestCase] = [
     try macExpectEqual(content.title, "Optimization finished with issues")
     try macExpectTrue(content.body.contains("2 completed"))
     try macExpectTrue(content.body.contains("1 failed"))
+    try macExpectTrue(content.body.contains("0 canceled"))
+    try macExpectTrue(content.body.contains("saved"))
     try macExpectTrue(!content.body.contains("/Users/example"))
     try macExpectEqual(
       content.userInfo[LocalNotificationService.outputPathUserInfoKey] as? String,
