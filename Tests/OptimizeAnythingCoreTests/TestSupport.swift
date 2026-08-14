@@ -210,3 +210,37 @@ func expectThrows<E: Error & Equatable>(
 
   throw TestFailure(description: "Expected \(expected), but operation succeeded")
 }
+
+func eventually(
+  timeout: Duration = .seconds(2),
+  operation: @escaping @Sendable () async -> Bool
+) async throws {
+  let clock = ContinuousClock()
+  let deadline = clock.now.advanced(by: timeout)
+  while clock.now < deadline {
+    if await operation() { return }
+    try await Task.sleep(for: .milliseconds(10))
+  }
+  throw TestFailure(description: "Condition was not met before timeout")
+}
+
+func firstValue<Element: Sendable>(
+  from stream: AsyncStream<Element>,
+  timeout: Duration = .seconds(2)
+) async throws -> Element {
+  try await withThrowingTaskGroup(of: Element.self) { group in
+    group.addTask {
+      for await value in stream { return value }
+      throw TestFailure(description: "Stream ended before yielding a value")
+    }
+    group.addTask {
+      try await Task.sleep(for: timeout)
+      throw TestFailure(description: "Stream did not yield before timeout")
+    }
+    guard let value = try await group.next() else {
+      throw TestFailure(description: "No stream result task completed")
+    }
+    group.cancelAll()
+    return value
+  }
+}

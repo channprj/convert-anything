@@ -7,6 +7,7 @@ struct TestMain {
     let tests =
       ruleCatalogTests + mappingStoreTests + dropAdmissionServiceTests + outputPathResolverTests
       + encoderArgumentsTests + ffprobeClientTests + ffmpegRunnerTests + conversionServiceTests
+      + conversionQueueTests + drainSummaryTests
     var failures: [(String, Error)] = []
 
     for test in tests {
