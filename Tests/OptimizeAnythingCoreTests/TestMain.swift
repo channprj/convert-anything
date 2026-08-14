@@ -6,7 +6,7 @@ struct TestMain {
   static func main() async {
     let tests =
       ruleCatalogTests + mappingStoreTests + dropAdmissionServiceTests + outputPathResolverTests
-      + encoderArgumentsTests
+      + encoderArgumentsTests + ffprobeClientTests + ffmpegRunnerTests + conversionServiceTests
     var failures: [(String, Error)] = []
 
     for test in tests {
