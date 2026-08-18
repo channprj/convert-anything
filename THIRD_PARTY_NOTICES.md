@@ -1,6 +1,6 @@
 # Third-Party Notices
 
-Optimize Anything includes the following unmodified open-source components in its bundled media toolchain:
+Convert Anything includes the following unmodified open-source components in its bundled media toolchain:
 
 - FFmpeg 8.0, licensed under LGPL-2.1-or-later.
 - libvpx 1.15.0, licensed under BSD-3-Clause.

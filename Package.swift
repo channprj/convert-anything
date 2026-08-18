@@ -2,31 +2,31 @@
 import PackageDescription
 
 let package = Package(
-  name: "OptimizeAnything",
+  name: "ConvertAnything",
   platforms: [.macOS(.v14)],
   products: [
-    .library(name: "OptimizeAnythingCore", targets: ["OptimizeAnythingCore"]),
-    .library(name: "OptimizeAnythingMac", targets: ["OptimizeAnythingMac"]),
-    .executable(name: "OptimizeAnythingApp", targets: ["OptimizeAnythingApp"]),
+    .library(name: "ConvertAnythingCore", targets: ["ConvertAnythingCore"]),
+    .library(name: "ConvertAnythingMac", targets: ["ConvertAnythingMac"]),
+    .executable(name: "ConvertAnythingApp", targets: ["ConvertAnythingApp"]),
   ],
   targets: [
-    .target(name: "OptimizeAnythingCore"),
-    .target(name: "OptimizeAnythingMac", dependencies: ["OptimizeAnythingCore"]),
-    .executableTarget(name: "OptimizeAnythingApp", dependencies: ["OptimizeAnythingMac"]),
+    .target(name: "ConvertAnythingCore"),
+    .target(name: "ConvertAnythingMac", dependencies: ["ConvertAnythingCore"]),
+    .executableTarget(name: "ConvertAnythingApp", dependencies: ["ConvertAnythingMac"]),
     .executableTarget(
-      name: "OptimizeAnythingCoreTests",
-      dependencies: ["OptimizeAnythingCore"],
-      path: "Tests/OptimizeAnythingCoreTests"
+      name: "ConvertAnythingCoreTests",
+      dependencies: ["ConvertAnythingCore"],
+      path: "Tests/ConvertAnythingCoreTests"
     ),
     .executableTarget(
-      name: "OptimizeAnythingMacTests",
-      dependencies: ["OptimizeAnythingMac"],
-      path: "Tests/OptimizeAnythingMacTests"
+      name: "ConvertAnythingMacTests",
+      dependencies: ["ConvertAnythingMac"],
+      path: "Tests/ConvertAnythingMacTests"
     ),
     .executableTarget(
-      name: "OptimizeAnythingIntegrationTests",
-      dependencies: ["OptimizeAnythingCore"],
-      path: "Tests/OptimizeAnythingIntegrationTests"
+      name: "ConvertAnythingIntegrationTests",
+      dependencies: ["ConvertAnythingCore"],
+      path: "Tests/ConvertAnythingIntegrationTests"
     ),
   ]
 )

@@ -3,10 +3,10 @@ set -euo pipefail
 
 script_dir="${0:A:h}"
 repo_root="${script_dir:h}"
-app_bundle="$repo_root/dist/Optimize Anything.app"
-app_executable="$app_bundle/Contents/MacOS/OptimizeAnything"
+app_bundle="$repo_root/dist/Convert Anything.app"
+app_executable="$app_bundle/Contents/MacOS/ConvertAnything"
 resource_dir="$app_bundle/Contents/Resources"
-scratch_root="$(mktemp -d "${TMPDIR:-/tmp}/optimize-anything-runtime.XXXXXX")"
+scratch_root="$(mktemp -d "${TMPDIR:-/tmp}/convert-anything-runtime.XXXXXX")"
 app_pid=""
 
 cleanup() {
@@ -23,16 +23,16 @@ test -x "$resource_dir/ffmpeg"
 test -x "$resource_dir/ffprobe"
 test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$app_bundle/Contents/Info.plist")" = true
 
-existing_pids="$(pgrep -x OptimizeAnything || true)"
+existing_pids="$(pgrep -x ConvertAnything || true)"
 if [[ -n "$existing_pids" ]]; then
-  print -u2 "OptimizeAnything is already running: $existing_pids"
+  print -u2 "ConvertAnything is already running: $existing_pids"
   exit 1
 fi
 
 fixture_dir="$scratch_root/fixtures"
 home_dir="$scratch_root/home"
 mkdir -p "$home_dir"
-OPTIMIZE_ANYTHING_TOOL_DIR="$resource_dir" \
+CONVERT_ANYTHING_TOOL_DIR="$resource_dir" \
   zsh "$repo_root/scripts/generate-fixtures.sh" "$fixture_dir"
 
 log_file="$scratch_root/app.log"
@@ -76,14 +76,14 @@ for output in "${expected_outputs[@]}"; do
   fi
 done
 
-process_count="$(pgrep -x OptimizeAnything | wc -l | tr -d ' ')"
+process_count="$(pgrep -x ConvertAnything | wc -l | tr -d ' ')"
 test "$process_count" = 1
-test "$(pgrep -x OptimizeAnything)" = "$app_pid"
+test "$(pgrep -x ConvertAnything)" = "$app_pid"
 (
   cd "$fixture_dir"
   shasum -a 256 -c sources.sha256
 )
-if find "$fixture_dir" -maxdepth 1 -type f -name '.*.optimize-anything-*' | grep -q .; then
+if find "$fixture_dir" -maxdepth 1 -type f -name '.*.convert-anything-*' | grep -q .; then
   print -u2 "Runtime smoke left a temporary conversion file"
   exit 1
 fi
@@ -97,7 +97,7 @@ test "$("$ffprobe" -v error -select_streams v:0 -show_entries stream=codec_name 
 alpha_stream_count="$("$ffprobe" -v error -select_streams v -show_entries stream=index -of csv=p=0 "$fixture_dir/alpha.avif" | wc -l | tr -d ' ')"
 test "$alpha_stream_count" = 2
 
-osascript -e 'tell application id "com.channprj.optimize-anything" to quit' >/dev/null
+osascript -e 'tell application id "com.channprj.convert-anything" to quit' >/dev/null
 quit_deadline=$((SECONDS + 10))
 while kill -0 "$app_pid" 2>/dev/null && (( SECONDS < quit_deadline )); do
   sleep 0.1

@@ -2,8 +2,8 @@
 set -euo pipefail
 
 repo_root="${0:A:h:h}"
-app_bundle="$repo_root/dist/Optimize Anything.app"
-app_executable="$app_bundle/Contents/MacOS/OptimizeAnything"
+app_bundle="$repo_root/dist/Convert Anything.app"
+app_executable="$app_bundle/Contents/MacOS/ConvertAnything"
 resource_dir="$app_bundle/Contents/Resources"
 
 test -x "$app_executable"

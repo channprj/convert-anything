@@ -157,7 +157,7 @@ cp "$libaom_source/LICENSE" "$source_offer/libaom-LICENSE"
 cp "$opus_source/COPYING" "$source_offer/Opus-COPYING"
 
 {
-  print "Optimize Anything reproducible media tool build"
+  print "Convert Anything reproducible media tool build"
   print ""
   print "Source archives are the unmodified release archives listed in Dependencies/ffmpeg/versions.env."
   print "No patches are applied; the git-diff equivalent against each extracted archive is empty."

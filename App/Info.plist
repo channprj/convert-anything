@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
   <key>CFBundleIdentifier</key>
-  <string>com.channprj.optimize-anything</string>
+  <string>com.channprj.convert-anything</string>
   <key>CFBundleExecutable</key>
-  <string>OptimizeAnything</string>
+  <string>ConvertAnything</string>
   <key>CFBundleName</key>
-  <string>Optimize Anything</string>
+  <string>Convert Anything</string>
   <key>CFBundleDisplayName</key>
-  <string>Optimize Anything</string>
+  <string>Convert Anything</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
   <key>CFBundleShortVersionString</key>

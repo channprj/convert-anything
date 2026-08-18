@@ -1,6 +1,6 @@
-# Optimize Anything
+# Convert Anything
 
-Optimize Anything is a native, Dock-less macOS menu bar utility for predictable local media conversion. Drop supported files onto its status item or popover and it writes efficient copies beside the untouched originals.
+Convert Anything is a native, Dock-less macOS menu bar utility for predictable local media conversion. Drop supported files onto its status item or popover and it writes efficient copies beside the untouched originals.
 
 This repository currently ships a local MVP build. It is not Developer ID signed, notarized, distributed publicly, or configured for automatic updates.
 
@@ -30,13 +30,13 @@ Build the pinned LGPL-compatible FFmpeg toolchain once, then assemble the app:
 ```bash
 zsh scripts/build-ffmpeg.sh
 zsh scripts/build-app.sh
-open "dist/Optimize Anything.app"
+open "dist/Convert Anything.app"
 ```
 
 The first command downloads release archives, verifies every SHA-256 value, and builds arm64 `ffmpeg` and `ffprobe`. The second command creates and ad-hoc signs:
 
 ```text
-dist/Optimize Anything.app
+dist/Convert Anything.app
 ```
 
 ## Use
@@ -55,9 +55,9 @@ Outputs are written in the source directory. The first available name is selecte
 
 ```text
 sample.m4a
-sample-optimized.m4a
-sample-optimized-2.m4a
-sample-optimized-3.m4a
+sample-converted.m4a
+sample-converted-2.m4a
+sample-converted-3.m4a
 ```
 
 Encoding uses a unique hidden sibling temporary file. The final path appears only after the output is non-empty and its container, codec, dimensions, orientation, and alpha contract have been validated. Source files are never renamed, replaced, modified, or deleted.
@@ -67,7 +67,7 @@ Encoding uses a unique hidden sibling temporary file. The final path appears onl
 Settings are stored atomically as versioned JSON at:
 
 ```text
-~/Library/Application Support/com.channprj.optimize-anything/settings.json
+~/Library/Application Support/com.channprj.convert-anything/settings.json
 ```
 
 Notification permission is requested after the first accepted drop. When authorized, one local summary is delivered after the queue drains. If permission is denied or unavailable, conversion continues and the same summary remains in the popover.
@@ -85,14 +85,14 @@ It runs Swift formatting checks, 56 core tests, 4 macOS adapter tests, 6 real-me
 Individual gates are also available:
 
 ```bash
-swift run OptimizeAnythingCoreTests
-swift run OptimizeAnythingMacTests
+swift run ConvertAnythingCoreTests
+swift run ConvertAnythingMacTests
 zsh scripts/integration-test.sh
 zsh scripts/runtime-smoke.sh
 zsh scripts/test-packaging.sh
 ```
 
-The repository uses executable Swift test harnesses because the available Command Line Tools environment does not provide a usable XCTest runner for this package. A missing `OPTIMIZE_ANYTHING_TOOL_DIR` intentionally skips only a direct invocation of the integration executable; `scripts/integration-test.sh` always supplies and verifies the bundled tools.
+The repository uses executable Swift test harnesses because the available Command Line Tools environment does not provide a usable XCTest runner for this package. A missing `CONVERT_ANYTHING_TOOL_DIR` intentionally skips only a direct invocation of the integration executable; `scripts/integration-test.sh` always supplies and verifies the bundled tools.
 
 ## Media Toolchain and Licenses
 
@@ -115,7 +115,7 @@ The app performs media inspection and conversion locally. It has no account, clo
 - **Bundled tools are missing:** run `zsh scripts/build-ffmpeg.sh`, then `zsh scripts/build-app.sh`.
 - **A file is rejected:** confirm it is a readable regular file with an enabled extension in Settings. Folder recursion is not supported.
 - **There is not enough disk space:** free capacity on the source volume. Preflight reserves a conservative output estimate plus a 64 MiB temporary-file margin.
-- **No notification appears:** allow Optimize Anything in System Settings → Notifications. Conversion results remain available in the popover when permission is denied.
+- **No notification appears:** allow Convert Anything in System Settings → Notifications. Conversion results remain available in the popover when permission is denied.
 - **The app cannot be distributed to another Mac as a trusted download:** the current bundle is locally ad-hoc signed and not notarized. Developer ID signing and public release packaging are outside this MVP.
 
 ## MVP Exclusions

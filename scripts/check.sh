@@ -6,9 +6,9 @@ repo_root="${script_dir:h}"
 cd "$repo_root"
 
 swift format lint --strict --recursive Package.swift Sources Tests
-swift run OptimizeAnythingCoreTests
-swift run OptimizeAnythingMacTests
-swift build -c release --product OptimizeAnythingApp
+swift run ConvertAnythingCoreTests
+swift run ConvertAnythingMacTests
+swift build -c release --product ConvertAnythingApp
 zsh scripts/build-app.sh
 zsh scripts/integration-test.sh
 zsh scripts/runtime-smoke.sh
@@ -16,4 +16,4 @@ zsh scripts/test-packaging.sh
 git diff --check
 
 print "All checks passed: 56 core, 4 macOS, 6 integration"
-print "Artifact: $repo_root/dist/Optimize Anything.app"
+print "Artifact: $repo_root/dist/Convert Anything.app"

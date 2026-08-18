@@ -3,7 +3,7 @@ set -euo pipefail
 
 script_dir="${0:A:h}"
 repo_root="${script_dir:h}"
-tool_dir="${OPTIMIZE_ANYTHING_TOOL_DIR:-$repo_root/build/vendor/ffmpeg/bin}"
+tool_dir="${CONVERT_ANYTHING_TOOL_DIR:-$repo_root/build/vendor/ffmpeg/bin}"
 ffmpeg="$tool_dir/ffmpeg"
 fixture_dir="${1:-}"
 
