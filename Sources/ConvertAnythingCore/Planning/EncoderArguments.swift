@@ -12,19 +12,54 @@ public enum EncoderArguments {
 
     switch plan.rule.target {
     case .m4a:
-      arguments += audioArguments(quality: plan.rule.quality)
+      arguments += audioArguments(codec: "aac", quality: plan.rule.quality)
+    case .mp3:
+      arguments += audioArguments(codec: "libmp3lame", quality: plan.rule.quality)
     case .webm:
       arguments += videoArguments(quality: plan.rule.quality)
+    case .mp4:
+      arguments += mp4Arguments(quality: plan.rule.quality)
     case .avif:
       arguments += imageArguments(quality: plan.rule.quality, hasAlpha: media.hasAlpha)
+    case .jpegOrPng:
+      arguments += media.hasAlpha ? pngArguments() : jpegArguments(quality: plan.rule.quality)
     }
 
     arguments += ["-progress", "pipe:1", plan.output.temporary.path]
     return arguments
   }
 
-  private static func audioArguments(quality: QualityPreset) -> [String] {
-    ["-map", "0:a:0", "-vn", "-c:a", "aac", "-b:a", audioBitrate(for: quality)]
+  private static func audioArguments(codec: String, quality: QualityPreset) -> [String] {
+    ["-map", "0:a:0", "-vn", "-c:a", codec, "-b:a", audioBitrate(for: quality)]
+  }
+
+  private static func mp4Arguments(quality: QualityPreset) -> [String] {
+    [
+      "-map",
+      "0:v:0",
+      "-map",
+      "0:a:0?",
+      "-c:v",
+      "h264_videotoolbox",
+      "-q:v",
+      mp4Quality(for: quality),
+      "-pix_fmt",
+      "yuv420p",
+      "-c:a",
+      "aac",
+      "-b:a",
+      videoAudioBitrate(for: quality),
+      "-movflags",
+      "+faststart",
+    ]
+  }
+
+  private static func jpegArguments(quality: QualityPreset) -> [String] {
+    ["-map", "0:v:0", "-frames:v", "1", "-c:v", "mjpeg", "-q:v", jpegQuality(for: quality)]
+  }
+
+  private static func pngArguments() -> [String] {
+    ["-map", "0:v:0", "-frames:v", "1", "-c:v", "png"]
   }
 
   private static func videoArguments(quality: QualityPreset) -> [String] {
@@ -84,6 +119,22 @@ public enum EncoderArguments {
     case .smaller: "96k"
     case .balanced: "160k"
     case .higherQuality: "256k"
+    }
+  }
+
+  private static func mp4Quality(for quality: QualityPreset) -> String {
+    switch quality {
+    case .smaller: "40"
+    case .balanced: "55"
+    case .higherQuality: "70"
+    }
+  }
+
+  private static func jpegQuality(for quality: QualityPreset) -> String {
+    switch quality {
+    case .smaller: "8"
+    case .balanced: "5"
+    case .higherQuality: "2"
     }
   }
 

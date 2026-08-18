@@ -18,8 +18,13 @@ The generated app is arm64-only.
 | Input | Output | Smaller | Balanced | Higher Quality |
 | --- | --- | --- | --- | --- |
 | WAV, AIFF, FLAC, CAF | M4A/AAC | 96 kbps | 160 kbps | 256 kbps |
+| M4A | MP3/LAME | 96 kbps | 160 kbps | 256 kbps |
 | MOV, MP4, MKV | WebM/VP9 + Opus | CRF 38, 64 kbps | CRF 32, 96 kbps | CRF 26, 128 kbps |
-| JPEG, JPG, PNG, WebP, TIFF | AVIF/AV1 | CRF 38 | CRF 30 | CRF 22 |
+| WebM | MP4/H.264 + AAC | Q 40, 64 kbps | Q 55, 96 kbps | Q 70, 128 kbps |
+| JPEG, JPG, PNG, TIFF | AVIF/AV1 | CRF 38 | CRF 30 | CRF 22 |
+| WebP | JPG or PNG | q 8 | q 5 | q 2 |
+
+WebP inputs pick the most efficient safe format per file: sources with alpha become lossless PNG so transparency survives, and opaque sources become the much smaller JPG. MP4 video uses the hardware VideoToolbox H.264 encoder.
 
 Settings can add, edit, disable, or remove rules within these supported family-to-target combinations. Raw FFmpeg arguments are never accepted.
 
@@ -80,7 +85,7 @@ After building the media toolchain, run the complete acceptance gate:
 zsh scripts/check.sh
 ```
 
-It runs Swift formatting checks, 56 core tests, 4 macOS adapter tests, 6 real-media integration tests, a release build, app assembly and signature checks, and a packaged runtime smoke test. The runtime test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
+It runs Swift formatting checks, 74 core tests, 4 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, and a packaged runtime smoke test. The runtime test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
 
 Individual gates are also available:
 
@@ -96,7 +101,7 @@ The repository uses executable Swift test harnesses because the available Comman
 
 ## Media Toolchain and Licenses
 
-Versions, download URLs, and hashes are pinned in `Dependencies/ffmpeg/versions.env`. FFmpeg is configured with GPL and nonfree components disabled and links the required libvpx, libaom, and Opus codecs without Homebrew or developer-workspace runtime dependencies.
+Versions, download URLs, and hashes are pinned in `Dependencies/ffmpeg/versions.env`. FFmpeg is configured with GPL and nonfree components disabled and links the required libvpx, libaom, Opus, and LAME codecs without Homebrew or developer-workspace runtime dependencies.
 
 Every built app includes `THIRD_PARTY_NOTICES.md` and the matching upstream source archives, license texts, hash manifest, and reproduction instructions under:
 

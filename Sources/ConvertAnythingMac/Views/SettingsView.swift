@@ -85,7 +85,7 @@ public struct SettingsView: View {
         .textFieldStyle(.roundedBorder)
         Picker("Target", selection: rule.target) {
           ForEach(RuleCatalog.targets(for: family), id: \.self) { target in
-            Text(target.rawValue.uppercased()).tag(target)
+            Text(target.displayName).tag(target)
           }
         }
         .frame(width: 145)

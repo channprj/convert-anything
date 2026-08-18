@@ -87,6 +87,85 @@ let conversionServiceTests: [TestCase] = [
 
     try expectEqual(outcome.failureCategory, .invalidOutput)
   },
+  TestCase("m4a converts to validated mp3 output") {
+    let source = try fixtureFile(named: "speech.m4a")
+    defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+    let plan = try makePlan(for: source, target: .mp3)
+    let executor = FakeCommandExecutor.successfullyWriting(
+      Data([4, 5]),
+      to: plan.output.temporary,
+      postProbe: .mp3Output,
+      initialProbe: .aacM4A
+    )
+
+    let outcome = await makeService(executor: executor).convert(plan) { _ in }
+
+    try expectEqual(outcome, .succeeded(output: plan.output.final, outputByteCount: 2))
+    try expectEqual(plan.output.final.pathExtension, "mp3")
+  },
+  TestCase("webm converts to validated h264 mp4 output") {
+    let source = try fixtureFile(named: "clip.webm")
+    defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+    let plan = try makePlan(for: source, target: .mp4)
+    let executor = FakeCommandExecutor.successfullyWriting(
+      Data([4, 5]),
+      to: plan.output.temporary,
+      postProbe: .h264MP4,
+      initialProbe: .vp9OpusWebM
+    )
+
+    let outcome = await makeService(executor: executor).convert(plan) { _ in }
+
+    try expectEqual(outcome, .succeeded(output: plan.output.final, outputByteCount: 2))
+    try expectEqual(plan.output.final.pathExtension, "mp4")
+  },
+  TestCase("alpha webp re-resolves the planned jpg output to png") {
+    let source = try fixtureFile(named: "overlay.webp")
+    defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+    let plan = try makePlan(for: source, target: .jpegOrPng)
+    try expectEqual(plan.output.final.pathExtension, "jpg")
+    let pngOutput = try OutputPathResolver().resolve(
+      input: source, fileExtension: "png", jobID: plan.id)
+    let executor = FakeCommandExecutor { request in
+      switch request.executable.lastPathComponent {
+      case "ffmpeg":
+        guard let destination = request.arguments.last else {
+          throw TestFailure(description: "Missing encode destination")
+        }
+        try Data([4, 5]).write(to: URL(fileURLWithPath: destination))
+        return CommandResult(terminationStatus: 0, standardOutput: Data(), standardError: Data())
+      case "ffprobe" where request.arguments.last == pngOutput.temporary.path:
+        return commandResult(for: .alphaPNGOutput)
+      case "ffprobe":
+        return commandResult(for: .alphaWebP)
+      default:
+        throw TestFailure(description: "Unexpected executable")
+      }
+    }
+
+    let outcome = await makeService(executor: executor).convert(plan) { _ in }
+
+    try expectEqual(outcome, .succeeded(output: pngOutput.final, outputByteCount: 2))
+    try expectEqual(pngOutput.final.pathExtension, "png")
+    try expectTrue(!FileManager.default.fileExists(atPath: plan.output.final.path))
+    try expectTrue(!FileManager.default.fileExists(atPath: pngOutput.temporary.path))
+  },
+  TestCase("opaque webp keeps the planned jpg output") {
+    let source = try fixtureFile(named: "sticker.webp")
+    defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+    let plan = try makePlan(for: source, target: .jpegOrPng)
+    let executor = FakeCommandExecutor.successfullyWriting(
+      Data([4, 5]),
+      to: plan.output.temporary,
+      postProbe: .jpegOutput,
+      initialProbe: .opaqueWebP
+    )
+
+    let outcome = await makeService(executor: executor).convert(plan) { _ in }
+
+    try expectEqual(outcome, .succeeded(output: plan.output.final, outputByteCount: 2))
+    try expectEqual(plan.output.final.pathExtension, "jpg")
+  },
   TestCase("cancel during encoding terminates by job ID and returns canceled") {
     let source = try fixtureFile(named: "movie.mov")
     defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }

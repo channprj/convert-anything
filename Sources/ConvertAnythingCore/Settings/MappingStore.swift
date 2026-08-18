@@ -53,6 +53,10 @@ public actor MappingStore: SettingsServing {
     if migrated.schemaVersion == 0 {
       migrated.schemaVersion = 1
     }
+    if migrated.schemaVersion == 1 {
+      migrated.rules = RuleCatalog.addingReverseRules(to: migrated.rules)
+      migrated.schemaVersion = 2
+    }
     return migrated
   }
 

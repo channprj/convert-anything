@@ -66,6 +66,17 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
       return failure(.inputUnavailable, "The input file is no longer available")
     }
 
+    let inputMedia: InputMediaInfo
+    do {
+      inputMedia = try await probe.probe(plan.input, commandID: plan.id)
+    } catch {
+      if await cancellations.consume(plan.id) { return .canceled }
+      return probeFailure(error, postcondition: false)
+    }
+    if await cancellations.consume(plan.id) { return .canceled }
+
+    let plan = resolvedPlan(for: plan, inputMedia: inputMedia)
+
     defer {
       try? fileManager.removeItem(at: plan.output.temporary)
     }
@@ -77,15 +88,6 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
         return failure(.finalizationFailed, "A stale temporary file could not be removed")
       }
     }
-
-    let inputMedia: InputMediaInfo
-    do {
-      inputMedia = try await probe.probe(plan.input, commandID: plan.id)
-    } catch {
-      if await cancellations.consume(plan.id) { return .canceled }
-      return probeFailure(error, postcondition: false)
-    }
-    if await cancellations.consume(plan.id) { return .canceled }
 
     let result: CommandResult
     do {
@@ -138,6 +140,30 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
     await runner.cancel(jobID: jobID)
   }
 
+  /// Re-resolves the output paths once the probed input settles a dynamic
+  /// target extension (jpegOrPng picks png only when alpha must survive).
+  private func resolvedPlan(for plan: ConversionPlan, inputMedia: InputMediaInfo)
+    -> ConversionPlan
+  {
+    let requiredExtension = plan.rule.target.fileExtension(hasAlpha: inputMedia.hasAlpha)
+    guard plan.output.final.pathExtension != requiredExtension,
+      let output = try? OutputPathResolver().resolve(
+        input: plan.input,
+        fileExtension: requiredExtension,
+        jobID: plan.id
+      )
+    else {
+      return plan
+    }
+    return ConversionPlan(
+      id: plan.id,
+      input: plan.input,
+      output: output,
+      rule: plan.rule,
+      sourceByteCount: plan.sourceByteCount
+    )
+  }
+
   private func regularFileSize(at url: URL) -> Int64? {
     guard
       let attributes = try? fileManager.attributesOfItem(atPath: url.path),
@@ -161,6 +187,26 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
       return !m4aContainers.isDisjoint(with: output.containerNames)
         && output.audioCodec == "aac"
         && matchingOptional(input.channelCount, output.channelCount)
+    case .mp3:
+      return output.containerNames.contains("mp3")
+        && output.audioCodec == "mp3"
+        && matchingOptional(input.channelCount, output.channelCount)
+    case .mp4:
+      let mp4Containers = Set(["mov", "mp4", "m4a", "3gp", "3g2", "mj2"])
+      let audioMatches = input.audioCodec == nil || output.audioCodec == "aac"
+      return !mp4Containers.isDisjoint(with: output.containerNames)
+        && output.videoCodec == "h264"
+        && audioMatches
+        && matchingOptional(input.width, output.width)
+        && matchingOptional(input.height, output.height)
+        && input.rotationDegrees == output.rotationDegrees
+    case .jpegOrPng:
+      let expectedCodec = input.hasAlpha ? "png" : "mjpeg"
+      let alphaMatches = !input.hasAlpha || output.hasAlpha
+      return output.videoCodec == expectedCodec
+        && matchingOptional(input.width, output.width)
+        && matchingOptional(input.height, output.height)
+        && alphaMatches
     case .webm:
       let audioMatches = input.audioCodec == nil || output.audioCodec == "opus"
       return output.containerNames.contains("webm")

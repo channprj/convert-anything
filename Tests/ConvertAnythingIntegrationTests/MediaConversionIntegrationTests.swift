@@ -82,6 +82,80 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "alpha temporary files"
       )
     },
+    IntegrationTestCase(name: "real m4a conversion produces MP3") {
+      let input = try environment.workingCopy(of: "speech.m4a")
+      let originalHash = try sha256(input)
+      let plan = try integrationPlan(for: input, target: .mp3)
+
+      let output = try successfulOutput(
+        from: await environment.service().convert(plan) { _ in }
+      )
+      let media = try await environment.probe(output)
+      try requireEqual(output.pathExtension, "mp3", "MP3 extension")
+      try require(media.containerNames.contains("mp3"), "Audio output must be MP3")
+      try requireEqual(media.audioCodec, "mp3", "MP3 codec")
+      try requireEqual(try sha256(input), originalHash, "M4A source hash")
+      try requireEqual(
+        try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "mp3 temporary files"
+      )
+    },
+    IntegrationTestCase(name: "real webm conversion produces H.264 MP4") {
+      let input = try environment.workingCopy(of: "clip.webm")
+      let originalHash = try sha256(input)
+      let plan = try integrationPlan(for: input, target: .mp4)
+
+      let output = try successfulOutput(
+        from: await environment.service().convert(plan) { _ in }
+      )
+      let media = try await environment.probe(output)
+      try requireEqual(output.pathExtension, "mp4", "MP4 extension")
+      try require(media.containerNames.contains("mp4"), "Video output must be MP4")
+      try requireEqual(media.videoCodec, "h264", "MP4 video codec")
+      try requireEqual(media.width, 320, "MP4 width")
+      try requireEqual(media.height, 180, "MP4 height")
+      try requireEqual(try sha256(input), originalHash, "WebM source hash")
+      try requireEqual(
+        try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "mp4 temporary files"
+      )
+    },
+    IntegrationTestCase(name: "real opaque webp conversion produces JPEG") {
+      let input = try environment.workingCopy(of: "opaque.webp")
+      let originalHash = try sha256(input)
+      let plan = try integrationPlan(for: input, target: .jpegOrPng)
+
+      let output = try successfulOutput(
+        from: await environment.service().convert(plan) { _ in }
+      )
+      let media = try await environment.probe(output)
+      try requireEqual(output.pathExtension, "jpg", "JPEG extension")
+      try requireEqual(media.videoCodec, "mjpeg", "JPEG codec")
+      try requireEqual(media.width, 96, "JPEG width")
+      try requireEqual(media.height, 64, "JPEG height")
+      try require(!media.hasAlpha, "Opaque WebP must produce an opaque JPEG")
+      try requireEqual(try sha256(input), originalHash, "opaque WebP source hash")
+      try requireEqual(
+        try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "jpeg temporary files"
+      )
+    },
+    IntegrationTestCase(name: "real alpha webp conversion produces PNG with alpha") {
+      let input = try environment.workingCopy(of: "alpha.webp")
+      let originalHash = try sha256(input)
+      let plan = try integrationPlan(for: input, target: .jpegOrPng)
+
+      let output = try successfulOutput(
+        from: await environment.service().convert(plan) { _ in }
+      )
+      let media = try await environment.probe(output)
+      try requireEqual(output.pathExtension, "png", "PNG extension")
+      try requireEqual(media.videoCodec, "png", "PNG codec")
+      try requireEqual(media.width, 96, "PNG width")
+      try requireEqual(media.height, 64, "PNG height")
+      try require(media.hasAlpha, "Alpha WebP must keep alpha in PNG")
+      try requireEqual(try sha256(input), originalHash, "alpha WebP source hash")
+      try requireEqual(
+        try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "png temporary files"
+      )
+    },
     IntegrationTestCase(name: "corrupt media leaves no final or temporary artifact") {
       let directory = environment.fixtureDirectory
         .appendingPathComponent("test-runs", isDirectory: true)

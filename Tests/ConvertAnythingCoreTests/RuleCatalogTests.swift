@@ -5,29 +5,88 @@ let ruleCatalogTests: [TestCase] = [
   TestCase("default rules match approved balanced profiles") {
     let rules = RuleCatalog.defaultRules
 
-    try expectEqual(rules.count, 3)
+    try expectEqual(rules.count, 6)
+    try expectEqual(rules.map(\.id).count, Set(rules.map(\.id)).count)
+    for rule in rules {
+      try expectEqual(rule.quality, .balanced)
+      try expectTrue(rule.isEnabled)
+    }
+
     try expectEqual(rules[0].id, RuleCatalog.audioRuleID)
     try expectEqual(rules[0].family, .audio)
     try expectEqual(rules[0].sourceExtensions, ["wav", "aiff", "flac", "caf"])
     try expectEqual(rules[0].target, .m4a)
-    try expectEqual(rules[0].quality, .balanced)
-    try expectTrue(rules[0].isEnabled)
 
-    try expectEqual(rules[1].id, RuleCatalog.videoRuleID)
-    try expectEqual(rules[1].family, .video)
-    try expectEqual(rules[1].sourceExtensions, ["mov", "mp4", "mkv"])
-    try expectEqual(rules[1].target, .webm)
-    try expectEqual(rules[1].quality, .balanced)
-    try expectTrue(rules[1].isEnabled)
+    try expectEqual(rules[1].id, RuleCatalog.mp3AudioRuleID)
+    try expectEqual(rules[1].family, .audio)
+    try expectEqual(rules[1].sourceExtensions, ["m4a"])
+    try expectEqual(rules[1].target, .mp3)
 
-    try expectEqual(rules[2].id, RuleCatalog.imageRuleID)
-    try expectEqual(rules[2].family, .image)
-    try expectEqual(rules[2].sourceExtensions, ["jpeg", "jpg", "png", "webp", "tiff"])
-    try expectEqual(rules[2].target, .avif)
-    try expectEqual(rules[2].quality, .balanced)
-    try expectTrue(rules[2].isEnabled)
+    try expectEqual(rules[2].id, RuleCatalog.videoRuleID)
+    try expectEqual(rules[2].family, .video)
+    try expectEqual(rules[2].sourceExtensions, ["mov", "mp4", "mkv"])
+    try expectEqual(rules[2].target, .webm)
+
+    try expectEqual(rules[3].id, RuleCatalog.mp4VideoRuleID)
+    try expectEqual(rules[3].family, .video)
+    try expectEqual(rules[3].sourceExtensions, ["webm"])
+    try expectEqual(rules[3].target, .mp4)
+
+    try expectEqual(rules[4].id, RuleCatalog.imageRuleID)
+    try expectEqual(rules[4].family, .image)
+    try expectEqual(rules[4].sourceExtensions, ["jpeg", "jpg", "png", "tiff"])
+    try expectEqual(rules[4].target, .avif)
+
+    try expectEqual(rules[5].id, RuleCatalog.webpImageRuleID)
+    try expectEqual(rules[5].family, .image)
+    try expectEqual(rules[5].sourceExtensions, ["webp"])
+    try expectEqual(rules[5].target, .jpegOrPng)
 
     try expectEqual(try RuleValidator.validate(rules), rules)
+  },
+  TestCase("reverse-rule migration frees webp and adds unclaimed defaults") {
+    var storedRules = [
+      RuleCatalog.defaultRules[0],
+      RuleCatalog.defaultRules[2],
+      ConversionRule(
+        id: RuleCatalog.imageRuleID,
+        family: .image,
+        sourceExtensions: ["jpeg", "jpg", "png", "webp", "tiff"],
+        target: .avif,
+        quality: .higherQuality,
+        isEnabled: true
+      ),
+    ]
+    storedRules[0].quality = .smaller
+
+    let migrated = RuleCatalog.addingReverseRules(to: storedRules)
+
+    try expectEqual(migrated.count, 6)
+    try expectEqual(migrated[0].quality, .smaller)
+    try expectEqual(migrated[2].sourceExtensions, ["jpeg", "jpg", "png", "tiff"])
+    try expectEqual(migrated[2].quality, .higherQuality)
+    try expectEqual(migrated[3].id, RuleCatalog.mp3AudioRuleID)
+    try expectEqual(migrated[4].id, RuleCatalog.mp4VideoRuleID)
+    try expectEqual(migrated[5].id, RuleCatalog.webpImageRuleID)
+    _ = try RuleValidator.validate(migrated)
+  },
+  TestCase("reverse-rule migration skips defaults whose extensions are claimed") {
+    let customRule = ConversionRule(
+      id: UUID(uuidString: "00000000-0000-0000-0000-000000000099")!,
+      family: .audio,
+      sourceExtensions: ["m4a"],
+      target: .mp3,
+      quality: .smaller,
+      isEnabled: true
+    )
+
+    let migrated = RuleCatalog.addingReverseRules(to: [customRule])
+
+    try expectEqual(
+      migrated.map(\.id),
+      [customRule.id, RuleCatalog.mp4VideoRuleID, RuleCatalog.webpImageRuleID]
+    )
+    try expectEqual(migrated[0].quality, .smaller)
   },
   TestCase("validator normalizes leading dots case and duplicates") {
     let rule = ConversionRule(
@@ -103,8 +162,14 @@ let ruleCatalogTests: [TestCase] = [
     }
   },
   TestCase("target compatibility is restricted by family") {
-    try expectEqual(RuleCatalog.targets(for: .audio), [.m4a])
-    try expectEqual(RuleCatalog.targets(for: .video), [.webm])
-    try expectEqual(RuleCatalog.targets(for: .image), [.avif])
+    try expectEqual(RuleCatalog.targets(for: .audio), [.m4a, .mp3])
+    try expectEqual(RuleCatalog.targets(for: .video), [.webm, .mp4])
+    try expectEqual(RuleCatalog.targets(for: .image), [.avif, .jpegOrPng])
+  },
+  TestCase("dynamic image target resolves extension by alpha") {
+    try expectEqual(TargetFormat.jpegOrPng.fileExtension(hasAlpha: false), "jpg")
+    try expectEqual(TargetFormat.jpegOrPng.fileExtension(hasAlpha: true), "png")
+    try expectEqual(TargetFormat.mp4.fileExtension(hasAlpha: true), "mp4")
+    try expectEqual(TargetFormat.jpegOrPng.displayName, "JPG/PNG")
   },
 ]

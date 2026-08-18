@@ -26,7 +26,7 @@ public struct ConversionRule: Identifiable, Codable, Equatable, Sendable {
 }
 
 public struct SettingsDocument: Codable, Equatable, Sendable {
-  public static let currentSchemaVersion = 1
+  public static let currentSchemaVersion = 2
 
   public var schemaVersion: Int
   public var rules: [ConversionRule]

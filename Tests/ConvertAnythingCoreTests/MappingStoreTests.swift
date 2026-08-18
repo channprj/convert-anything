@@ -12,7 +12,7 @@ let mappingStoreTests: [TestCase] = [
 
     try expectEqual(
       document,
-      SettingsDocument(schemaVersion: 1, rules: RuleCatalog.defaultRules)
+      SettingsDocument(schemaVersion: 2, rules: RuleCatalog.defaultRules)
     )
     try expectTrue(FileManager.default.fileExists(atPath: url.path))
     let persisted = try JSONDecoder().decode(SettingsDocument.self, from: Data(contentsOf: url))
@@ -40,7 +40,7 @@ let mappingStoreTests: [TestCase] = [
     let before = try Data(contentsOf: url)
     var invalidRules = RuleCatalog.defaultRules
     invalidRules.append(invalidRules[0])
-    let invalid = SettingsDocument(schemaVersion: 1, rules: invalidRules)
+    let invalid = SettingsDocument(rules: invalidRules)
 
     try await expectThrows(RuleValidationError.duplicateSourceExtension("wav")) {
       try await store.save(invalid)
@@ -63,8 +63,42 @@ let mappingStoreTests: [TestCase] = [
     let firstBytes = try Data(contentsOf: url)
     let secondLoad = try await store.load()
 
-    try expectEqual(firstLoad.schemaVersion, 1)
+    try expectEqual(firstLoad.schemaVersion, 2)
     try expectEqual(firstLoad.rules, rules)
+    try expectEqual(secondLoad, firstLoad)
+    try expectEqual(try Data(contentsOf: url), firstBytes)
+  },
+  TestCase("schema one gains the reverse rules once") {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("settings.json")
+    let legacyRules = [
+      RuleCatalog.defaultRules[0],
+      RuleCatalog.defaultRules[2],
+      ConversionRule(
+        id: RuleCatalog.imageRuleID,
+        family: .image,
+        sourceExtensions: ["jpeg", "jpg", "png", "webp", "tiff"],
+        target: .avif,
+        quality: .balanced,
+        isEnabled: true
+      ),
+    ]
+    let legacy = SettingsDocument(schemaVersion: 1, rules: legacyRules)
+    try JSONEncoder().encode(legacy).write(to: url)
+    let store = MappingStore(fileURL: url)
+
+    let firstLoad = try await store.load()
+    let firstBytes = try Data(contentsOf: url)
+    let secondLoad = try await store.load()
+
+    try expectEqual(firstLoad.schemaVersion, 2)
+    try expectEqual(firstLoad.rules.count, 6)
+    try expectEqual(firstLoad.rules[2].sourceExtensions, ["jpeg", "jpg", "png", "tiff"])
+    try expectEqual(
+      firstLoad.rules[3...].map(\.id),
+      [RuleCatalog.mp3AudioRuleID, RuleCatalog.mp4VideoRuleID, RuleCatalog.webpImageRuleID]
+    )
     try expectEqual(secondLoad, firstLoad)
     try expectEqual(try Data(contentsOf: url), firstBytes)
   },
@@ -72,12 +106,12 @@ let mappingStoreTests: [TestCase] = [
     let directory = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
     let url = directory.appendingPathComponent("settings.json")
-    let future = SettingsDocument(schemaVersion: 2, rules: RuleCatalog.defaultRules)
+    let future = SettingsDocument(schemaVersion: 3, rules: RuleCatalog.defaultRules)
     let bytes = try JSONEncoder().encode(future)
     try bytes.write(to: url)
     let store = MappingStore(fileURL: url)
 
-    try await expectThrows(RuleValidationError.unsupportedSchemaVersion(2)) {
+    try await expectThrows(RuleValidationError.unsupportedSchemaVersion(3)) {
       _ = try await store.load()
     }
 

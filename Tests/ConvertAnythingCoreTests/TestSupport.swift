@@ -107,6 +107,78 @@ extension InputMediaInfo {
     rotationDegrees: nil
   )
 
+  static let opaqueWebP = InputMediaInfo(
+    containerNames: ["webp_pipe"],
+    durationSeconds: nil,
+    videoCodec: "webp",
+    audioCodec: nil,
+    width: 96,
+    height: 64,
+    channelCount: nil,
+    hasAlpha: false,
+    rotationDegrees: nil
+  )
+
+  static let alphaWebP = InputMediaInfo(
+    containerNames: ["webp_pipe"],
+    durationSeconds: nil,
+    videoCodec: "webp",
+    audioCodec: nil,
+    width: 96,
+    height: 64,
+    channelCount: nil,
+    hasAlpha: true,
+    rotationDegrees: nil
+  )
+
+  static let mp3Output = InputMediaInfo(
+    containerNames: ["mp3"],
+    durationSeconds: 2,
+    videoCodec: nil,
+    audioCodec: "mp3",
+    width: nil,
+    height: nil,
+    channelCount: 2,
+    hasAlpha: false,
+    rotationDegrees: nil
+  )
+
+  static let h264MP4 = InputMediaInfo(
+    containerNames: ["mov", "mp4", "m4a", "3gp", "3g2", "mj2"],
+    durationSeconds: 3,
+    videoCodec: "h264",
+    audioCodec: "aac",
+    width: 320,
+    height: 180,
+    channelCount: 2,
+    hasAlpha: false,
+    rotationDegrees: 90
+  )
+
+  static let jpegOutput = InputMediaInfo(
+    containerNames: ["image2"],
+    durationSeconds: nil,
+    videoCodec: "mjpeg",
+    audioCodec: nil,
+    width: 96,
+    height: 64,
+    channelCount: nil,
+    hasAlpha: false,
+    rotationDegrees: nil
+  )
+
+  static let alphaPNGOutput = InputMediaInfo(
+    containerNames: ["png_pipe"],
+    durationSeconds: nil,
+    videoCodec: "png",
+    audioCodec: nil,
+    width: 96,
+    height: 64,
+    channelCount: nil,
+    hasAlpha: true,
+    rotationDegrees: nil
+  )
+
   static let aacM4A = InputMediaInfo(
     containerNames: ["mov", "mp4", "m4a"],
     durationSeconds: 2,

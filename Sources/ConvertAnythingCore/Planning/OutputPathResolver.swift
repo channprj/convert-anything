@@ -4,9 +4,14 @@ public struct OutputPathResolver: Sendable {
   public init() {}
 
   public func resolve(input: URL, target: TargetFormat, jobID: UUID) throws -> OutputPaths {
+    try resolve(input: input, fileExtension: target.fileExtension(hasAlpha: false), jobID: jobID)
+  }
+
+  public func resolve(input: URL, fileExtension targetExtension: String, jobID: UUID) throws
+    -> OutputPaths
+  {
     let directory = input.deletingLastPathComponent()
     let stem = input.deletingPathExtension().lastPathComponent
-    let targetExtension = target.rawValue
 
     var final = directory.appendingPathComponent("\(stem).\(targetExtension)")
     if FileManager.default.fileExists(atPath: final.path) {

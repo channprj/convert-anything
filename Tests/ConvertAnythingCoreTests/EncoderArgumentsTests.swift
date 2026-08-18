@@ -1,7 +1,9 @@
 import ConvertAnythingCore
 import Foundation
 
-let encoderArgumentsTests: [TestCase] = audioArgumentTests + videoArgumentTests + imageArgumentTests
+let encoderArgumentsTests: [TestCase] =
+  audioArgumentTests + mp3ArgumentTests + videoArgumentTests + mp4ArgumentTests
+  + imageArgumentTests + webpArgumentTests
 
 private let audioProfiles: [(QualityPreset, String)] = [
   (.smaller, "96k"),
@@ -18,6 +20,43 @@ private let audioArgumentTests: [TestCase] = audioProfiles.map { quality, bitrat
       EncoderArguments.make(plan: plan, media: .audioFixture),
       commonInputArguments(plan)
         + ["-map", "0:a:0", "-vn", "-c:a", "aac", "-b:a", bitrate]
+        + outputArguments(plan)
+    )
+  }
+}
+
+private let mp3ArgumentTests: [TestCase] = audioProfiles.map { quality, bitrate in
+  TestCase("\(quality.rawValue) mp3 arguments use libmp3lame") {
+    let plan = try makePlan(source: "speech.m4a", target: .mp3, quality: quality)
+    defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+
+    try expectEqual(
+      EncoderArguments.make(plan: plan, media: .aacM4A),
+      commonInputArguments(plan)
+        + ["-map", "0:a:0", "-vn", "-c:a", "libmp3lame", "-b:a", bitrate]
+        + outputArguments(plan)
+    )
+  }
+}
+
+private let mp4Profiles: [(QualityPreset, String, String)] = [
+  (.smaller, "40", "64k"),
+  (.balanced, "55", "96k"),
+  (.higherQuality, "70", "128k"),
+]
+
+private let mp4ArgumentTests: [TestCase] = mp4Profiles.map { quality, videoQuality, audioBitrate in
+  TestCase("\(quality.rawValue) mp4 arguments use VideoToolbox H.264 and AAC") {
+    let plan = try makePlan(source: "clip.webm", target: .mp4, quality: quality)
+    defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+
+    try expectEqual(
+      EncoderArguments.make(plan: plan, media: .vp9OpusWebM),
+      commonInputArguments(plan)
+        + [
+          "-map", "0:v:0", "-map", "0:a:0?", "-c:v", "h264_videotoolbox", "-q:v", videoQuality,
+          "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", audioBitrate, "-movflags", "+faststart",
+        ]
         + outputArguments(plan)
     )
   }
@@ -85,6 +124,39 @@ private let imageArgumentTests: [TestCase] = imageProfiles.flatMap { quality, cr
     },
   ]
 }
+
+private let jpegProfiles: [(QualityPreset, String)] = [
+  (.smaller, "8"),
+  (.balanced, "5"),
+  (.higherQuality, "2"),
+]
+
+private let webpArgumentTests: [TestCase] =
+  jpegProfiles.map { quality, jpegQuality in
+    TestCase("\(quality.rawValue) opaque webp arguments encode one JPEG frame") {
+      let plan = try makePlan(source: "sticker.webp", target: .jpegOrPng, quality: quality)
+      defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+
+      try expectEqual(
+        EncoderArguments.make(plan: plan, media: .opaqueWebP),
+        commonInputArguments(plan)
+          + ["-map", "0:v:0", "-frames:v", "1", "-c:v", "mjpeg", "-q:v", jpegQuality]
+          + outputArguments(plan)
+      )
+    }
+  } + [
+    TestCase("alpha webp arguments encode lossless PNG") {
+      let plan = try makePlan(source: "overlay.webp", target: .jpegOrPng, quality: .balanced)
+      defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+
+      try expectEqual(
+        EncoderArguments.make(plan: plan, media: .alphaWebP),
+        commonInputArguments(plan)
+          + ["-map", "0:v:0", "-frames:v", "1", "-c:v", "png"]
+          + outputArguments(plan)
+      )
+    }
+  ]
 
 private func commonInputArguments(_ plan: ConversionPlan) -> [String] {
   ["-nostdin", "-hide_banner", "-loglevel", "error", "-n", "-i", plan.input.path]
