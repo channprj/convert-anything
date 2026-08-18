@@ -103,7 +103,12 @@ public final class StatusBarController {
       warningVisible = false
       updateButton()
       popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-      popover.contentViewController?.view.window?.makeKey()
+      if let window = popover.contentViewController?.view.window {
+        window.makeKey()
+        // Drop the automatic first-responder focus so no footer button
+        // (Settings…) appears keyboard-focused when the popover opens.
+        window.makeFirstResponder(nil)
+      }
     }
   }
 }
