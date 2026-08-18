@@ -39,24 +39,29 @@ ffmpeg_archive="$download_dir/ffmpeg-$FFMPEG_VERSION.tar.xz"
 libvpx_archive="$download_dir/libvpx-$LIBVPX_VERSION.tar.gz"
 libaom_archive="$download_dir/libaom-$LIBAOM_VERSION.tar.gz"
 opus_archive="$download_dir/opus-$OPUS_VERSION.tar.gz"
+lame_archive="$download_dir/lame-$LAME_VERSION.tar.gz"
 
 download_and_verify "$FFMPEG_URL" "$FFMPEG_SHA256" "$ffmpeg_archive"
 download_and_verify "$LIBVPX_URL" "$LIBVPX_SHA256" "$libvpx_archive"
 download_and_verify "$LIBAOM_URL" "$LIBAOM_SHA256" "$libaom_archive"
 download_and_verify "$OPUS_URL" "$OPUS_SHA256" "$opus_archive"
+download_and_verify "$LAME_URL" "$LAME_SHA256" "$lame_archive"
 
 tar -xf "$ffmpeg_archive" -C "$source_dir"
 tar -xf "$libvpx_archive" -C "$source_dir"
 tar -xf "$libaom_archive" -C "$source_dir"
 tar -xf "$opus_archive" -C "$source_dir"
+tar -xf "$lame_archive" -C "$source_dir"
 
 ffmpeg_source="$source_dir/ffmpeg-$FFMPEG_VERSION"
 libvpx_source="$source_dir/libvpx-$LIBVPX_VERSION"
 libaom_source="$source_dir/libaom-$LIBAOM_VERSION"
 opus_source="$source_dir/opus-$OPUS_VERSION"
+lame_source="$source_dir/lame-$LAME_VERSION"
 opus_prefix="$prefix_dir/opus"
 libvpx_prefix="$prefix_dir/libvpx"
 libaom_prefix="$prefix_dir/libaom"
+lame_prefix="$prefix_dir/lame"
 
 jobs="$(sysctl -n hw.ncpu)"
 export MACOSX_DEPLOYMENT_TARGET=14.0
@@ -71,6 +76,19 @@ common_ldflags="-arch arm64 -mmacosx-version-min=14.0"
     --enable-static \
     --disable-doc \
     --disable-extra-programs \
+    CFLAGS="$common_cflags" \
+    LDFLAGS="$common_ldflags"
+  make -j"$jobs"
+  make install
+)
+
+(
+  cd "$lame_source"
+  ./configure \
+    --prefix="$lame_prefix" \
+    --disable-shared \
+    --enable-static \
+    --disable-frontend \
     CFLAGS="$common_cflags" \
     LDFLAGS="$common_ldflags"
   make -j"$jobs"
@@ -131,9 +149,10 @@ ffmpeg_configure=(
   --enable-libaom
   --enable-libvpx
   --enable-libopus
+  --enable-libmp3lame
   --pkg-config-flags=--static
-  --extra-cflags="$common_cflags -I$opus_prefix/include -I$libvpx_prefix/include -I$libaom_prefix/include"
-  --extra-ldflags="$common_ldflags -L$opus_prefix/lib -L$libvpx_prefix/lib -L$libaom_prefix/lib"
+  --extra-cflags="$common_cflags -I$opus_prefix/include -I$libvpx_prefix/include -I$libaom_prefix/include -I$lame_prefix/include"
+  --extra-ldflags="$common_ldflags -L$opus_prefix/lib -L$libvpx_prefix/lib -L$libaom_prefix/lib -L$lame_prefix/lib"
 )
 
 (
@@ -147,7 +166,8 @@ cp "$ffmpeg_source/ffmpeg" "$tool_dir/bin/ffmpeg"
 cp "$ffmpeg_source/ffprobe" "$tool_dir/bin/ffprobe"
 chmod +x "$tool_dir/bin/ffmpeg" "$tool_dir/bin/ffprobe"
 
-cp "$ffmpeg_archive" "$libvpx_archive" "$libaom_archive" "$opus_archive" "$source_offer/"
+cp "$ffmpeg_archive" "$libvpx_archive" "$libaom_archive" "$opus_archive" "$lame_archive" \
+  "$source_offer/"
 cp "$manifest" "$source_offer/versions.env"
 cp "$ffmpeg_source/LICENSE.md" "$source_offer/FFmpeg-LICENSE.md"
 cp "$ffmpeg_source/COPYING.LGPLv2.1" "$source_offer/FFmpeg-COPYING.LGPLv2.1"
@@ -155,6 +175,7 @@ cp "$ffmpeg_source/COPYING.LGPLv3" "$source_offer/FFmpeg-COPYING.LGPLv3"
 cp "$libvpx_source/LICENSE" "$source_offer/libvpx-LICENSE"
 cp "$libaom_source/LICENSE" "$source_offer/libaom-LICENSE"
 cp "$opus_source/COPYING" "$source_offer/Opus-COPYING"
+cp "$lame_source/COPYING" "$source_offer/LAME-COPYING"
 
 {
   print "Convert Anything reproducible media tool build"

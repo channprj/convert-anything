@@ -6,6 +6,7 @@ Convert Anything includes the following unmodified open-source components in its
 - libvpx 1.15.0, licensed under BSD-3-Clause.
 - libaom 3.12.1, licensed under BSD-2-Clause.
 - Opus 1.5.2, licensed under BSD-3-Clause.
+- LAME 3.100, licensed under LGPL-2.0-or-later.
 
 The application bundle includes the exact corresponding source archives, license texts, SHA-256 manifest, and reproduction instructions under `Contents/Resources/source-offer`. The application build uses the upstream release archives without source patches and configures FFmpeg with GPL and nonfree components disabled.
 

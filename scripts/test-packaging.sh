@@ -16,6 +16,7 @@ test -f "$resource_dir/source-offer/ffmpeg-8.0.tar.xz"
 test -f "$resource_dir/source-offer/libvpx-1.15.0.tar.gz"
 test -f "$resource_dir/source-offer/libaom-3.12.1.tar.gz"
 test -f "$resource_dir/source-offer/opus-1.5.2.tar.gz"
+test -f "$resource_dir/source-offer/lame-3.100.tar.gz"
 test "$(/usr/libexec/PlistBuddy -c 'Print :LSUIElement' "$app_bundle/Contents/Info.plist")" = true
 codesign --verify --deep --strict "$app_bundle"
 build_configuration="$("$resource_dir/ffmpeg" -hide_banner -buildconf 2>&1)"
@@ -25,6 +26,8 @@ grep -q -- '--disable-nonfree' <<< "$build_configuration"
 grep -q 'libvpx-vp9' <<< "$encoder_list"
 grep -q 'libaom-av1' <<< "$encoder_list"
 grep -q 'libopus' <<< "$encoder_list"
+grep -q 'libmp3lame' <<< "$encoder_list"
+grep -q 'h264_videotoolbox' <<< "$encoder_list"
 
 file "$app_executable" | grep -q 'arm64'
 file "$resource_dir/ffmpeg" | grep -q 'arm64'
