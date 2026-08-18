@@ -48,7 +48,7 @@ dist/Convert Anything.app
 
 1. Start the app. It appears only in the menu bar.
 2. Drop one or more supported files directly onto the menu bar icon. You can also click the icon and drop files onto the larger popover.
-3. Click the icon to inspect active, queued, completed, failed, or canceled jobs. Active work can be canceled; failed jobs can be retried.
+3. Click the icon to inspect active, queued, completed, failed, or canceled jobs. Active work can be canceled; failed jobs can be retried. Finished entries can be removed one at a time, or all at once with `Clear`.
 4. Use `Show Output` or `Show Source` to reveal a file in Finder.
 5. Open `Settings…` to change enabled extensions or quality presets.
 
@@ -85,7 +85,7 @@ After building the media toolchain, run the complete acceptance gate:
 zsh scripts/check.sh
 ```
 
-It runs Swift formatting checks, 74 core tests, 4 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, and a packaged runtime smoke test. The runtime test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
+It runs Swift formatting checks, 76 core tests, 4 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, and a packaged runtime smoke test. The runtime test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
 
 Individual gates are also available:
 

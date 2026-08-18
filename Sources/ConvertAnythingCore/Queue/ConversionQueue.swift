@@ -53,6 +53,8 @@ public protocol QueueServing: Sendable {
   func enqueue(_ plans: [ConversionPlan]) async
   func cancel(jobID: UUID) async
   func retry(failedJobID: UUID, with plan: ConversionPlan) async throws
+  func remove(jobID: UUID) async
+  func clearFinished() async
   func snapshots() async -> AsyncStream<QueueSnapshot>
   func drainEvents() async -> AsyncStream<DrainSummary>
 }
@@ -116,6 +118,23 @@ public actor ConversionQueue: QueueServing {
       throw QueueError.duplicateJobID(plan.id)
     }
     await enqueue([plan])
+  }
+
+  public func remove(jobID: UUID) async {
+    guard let index = jobs.firstIndex(where: { $0.id == jobID }),
+      jobs[index].state.isTerminal
+    else {
+      return
+    }
+    jobs.remove(at: index)
+    publishSnapshot()
+  }
+
+  public func clearFinished() async {
+    let remaining = jobs.filter { !$0.state.isTerminal }
+    guard remaining.count != jobs.count else { return }
+    jobs = remaining
+    publishSnapshot()
   }
 
   public func snapshots() async -> AsyncStream<QueueSnapshot> {

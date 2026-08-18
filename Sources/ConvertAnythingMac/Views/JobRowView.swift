@@ -43,14 +43,30 @@ public struct JobRowView: View {
       VStack(alignment: .trailing, spacing: 4) {
         Button("Retry") { Task { await model.retry(job: job) } }
         Button("Show Source") { model.reveal(job.plan.input) }
+        removeButton
       }
       .buttonStyle(.borderless)
     case .succeeded(let output, _):
-      Button("Show Output") { model.reveal(output) }
+      HStack(spacing: 8) {
+        Button("Show Output") { model.reveal(output) }
+        removeButton
+      }
+      .buttonStyle(.borderless)
+    case .canceled:
+      removeButton
         .buttonStyle(.borderless)
-    case .queued, .canceled:
+    case .queued:
       EmptyView()
     }
+  }
+
+  private var removeButton: some View {
+    Button {
+      Task { await model.remove(jobID: job.id) }
+    } label: {
+      Image(systemName: "xmark")
+    }
+    .help("Remove from history")
   }
 
   private var stateText: String {

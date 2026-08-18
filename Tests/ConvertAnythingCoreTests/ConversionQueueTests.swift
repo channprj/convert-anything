@@ -82,6 +82,59 @@ let conversionQueueTests: [TestCase] = [
     try expectEqual(startedIDs, [plans[0].id])
     try expectEqual(summary.canceledCount, 2)
   },
+  TestCase("removing a job only drops finished work") {
+    let plans = try makeQueuePlans(byteCounts: [10, 10])
+    defer { removeQueuePlanDirectories(plans) }
+    let converter = ControlledConverter()
+    let queue = ConversionQueue(converter: converter)
+
+    await queue.enqueue(plans)
+    try await converter.waitUntilStarted(plans[0].id)
+    await converter.finish(
+      plans[0].id,
+      with: .succeeded(output: plans[0].output.final, outputByteCount: 4)
+    )
+    try await converter.waitUntilStarted(plans[1].id)
+
+    await queue.remove(jobID: plans[1].id)
+    let untouched = try await firstValue(from: await queue.snapshots())
+    try expectEqual(untouched.jobs.map(\.id), [plans[0].id, plans[1].id])
+
+    await queue.remove(jobID: plans[0].id)
+    let removed = try await firstValue(from: await queue.snapshots())
+    try expectEqual(removed.jobs.map(\.id), [plans[1].id])
+    await converter.finish(plans[1].id, with: .canceled)
+  },
+  TestCase("clearing finished work keeps active and queued jobs") {
+    let plans = try makeQueuePlans(byteCounts: [10, 10, 10])
+    defer { removeQueuePlanDirectories(plans) }
+    let converter = ControlledConverter()
+    let queue = ConversionQueue(converter: converter)
+
+    await queue.enqueue(plans)
+    try await converter.waitUntilStarted(plans[0].id)
+    await converter.finish(
+      plans[0].id,
+      with: .failed(ConversionFailure(category: .encoderFailed, message: "boom"))
+    )
+    try await converter.waitUntilStarted(plans[1].id)
+
+    await queue.clearFinished()
+    let cleared = try await firstValue(from: await queue.snapshots())
+    try expectEqual(cleared.jobs.map(\.id), [plans[1].id, plans[2].id])
+
+    await converter.finish(plans[1].id, with: .canceled)
+    try await converter.waitUntilStarted(plans[2].id)
+    await converter.finish(plans[2].id, with: .canceled)
+    try await eventually {
+      let snapshot = try? await firstValue(
+        from: await queue.snapshots(), timeout: .milliseconds(100))
+      return snapshot?.jobs.allSatisfy(\.state.isTerminal) ?? false
+    }
+    await queue.clearFinished()
+    let empty = try await firstValue(from: await queue.snapshots())
+    try expectEqual(empty.jobs, [])
+  },
   TestCase("retry preserves failed job and enqueues a new plan ID") {
     let plans = try makeQueuePlans(byteCounts: [10, 10])
     defer { removeQueuePlanDirectories(plans) }

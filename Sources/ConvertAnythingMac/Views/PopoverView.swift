@@ -99,6 +99,10 @@ public struct PopoverView: View {
     HStack {
       Button("Settings…", action: onSettings)
       Spacer()
+      if hasFinishedJobs {
+        Button("Clear") { Task { await model.clearFinishedJobs() } }
+          .help("Clear finished conversions")
+      }
       if let output = model.lastDrainSummary?.lastSuccessfulOutput {
         Button("Show Output") { model.reveal(output) }
       }
@@ -106,6 +110,10 @@ public struct PopoverView: View {
     }
     .buttonStyle(.borderless)
     .padding(12)
+  }
+
+  private var hasFinishedJobs: Bool {
+    model.snapshot.jobs.contains { $0.state.isTerminal }
   }
 
   private var statusText: String {

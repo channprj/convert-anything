@@ -95,6 +95,8 @@ actor FakeQueue: QueueServing {
   private(set) var enqueuedPlans: [ConversionPlan] = []
   private(set) var canceledIDs: [UUID] = []
   private(set) var retries: [(UUID, ConversionPlan)] = []
+  private(set) var removedIDs: [UUID] = []
+  private(set) var clearRequestCount = 0
 
   func enqueue(_ plans: [ConversionPlan]) async {
     enqueuedPlans.append(contentsOf: plans)
@@ -106,6 +108,14 @@ actor FakeQueue: QueueServing {
 
   func retry(failedJobID: UUID, with plan: ConversionPlan) async throws {
     retries.append((failedJobID, plan))
+  }
+
+  func remove(jobID: UUID) async {
+    removedIDs.append(jobID)
+  }
+
+  func clearFinished() async {
+    clearRequestCount += 1
   }
 
   func snapshots() async -> AsyncStream<QueueSnapshot> {

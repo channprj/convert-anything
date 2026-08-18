@@ -149,6 +149,14 @@ public final class AppViewModel: ObservableObject {
     }
   }
 
+  public func remove(jobID: UUID) async {
+    await dependencies.queue.remove(jobID: jobID)
+  }
+
+  public func clearFinishedJobs() async {
+    await dependencies.queue.clearFinished()
+  }
+
   public func reveal(_ url: URL) {
     dependencies.finder.reveal(url)
   }
