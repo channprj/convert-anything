@@ -33,13 +33,17 @@ public struct ConversionJob: Identifiable, Equatable, Sendable {
 
 public struct QueueSnapshot: Equatable, Sendable {
   public let jobs: [ConversionJob]
-  public let unfinishedCount: Int
-  public let isRunning: Bool
 
-  public init(jobs: [ConversionJob], unfinishedCount: Int, isRunning: Bool) {
+  public var unfinishedCount: Int {
+    jobs.count { !$0.state.isTerminal }
+  }
+
+  public var isRunning: Bool {
+    unfinishedCount > 0
+  }
+
+  public init(jobs: [ConversionJob]) {
     self.jobs = jobs
-    self.unfinishedCount = unfinishedCount
-    self.isRunning = isRunning
   }
 }
 
@@ -245,12 +249,7 @@ public actor ConversionQueue: QueueServing {
   }
 
   private func snapshot() -> QueueSnapshot {
-    let unfinishedCount = jobs.count { !$0.state.isTerminal }
-    return QueueSnapshot(
-      jobs: jobs,
-      unfinishedCount: unfinishedCount,
-      isRunning: unfinishedCount > 0
-    )
+    QueueSnapshot(jobs: jobs)
   }
 
   private func publishSnapshot() {

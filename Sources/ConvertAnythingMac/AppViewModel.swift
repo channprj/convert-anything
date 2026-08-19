@@ -46,11 +46,7 @@ public struct ViewModelDependencies: Sendable {
 @MainActor
 public final class AppViewModel: ObservableObject {
   @Published public private(set) var rules: [ConversionRule] = RuleCatalog.defaultRules
-  @Published public private(set) var snapshot = QueueSnapshot(
-    jobs: [],
-    unfinishedCount: 0,
-    isRunning: false
-  )
+  @Published public private(set) var snapshot = QueueSnapshot(jobs: [])
   @Published public private(set) var admissionErrors: [String] = []
   @Published public private(set) var lastDrainSummary: DrainSummary?
   @Published public private(set) var settingsError: String?

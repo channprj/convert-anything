@@ -120,7 +120,7 @@ actor FakeQueue: QueueServing {
 
   func snapshots() async -> AsyncStream<QueueSnapshot> {
     AsyncStream { continuation in
-      continuation.yield(QueueSnapshot(jobs: [], unfinishedCount: 0, isRunning: false))
+      continuation.yield(QueueSnapshot(jobs: []))
     }
   }
 
