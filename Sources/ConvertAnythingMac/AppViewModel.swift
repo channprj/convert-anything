@@ -176,10 +176,6 @@ public final class AppViewModel: ObservableObject {
     await saveRules(RuleCatalog.defaultRules)
   }
 
-  public func setToolsAvailable(_ available: Bool) {
-    toolsAvailable = available
-  }
-
   private func loadSettingsIfNeeded() async {
     guard !settingsLoaded else { return }
     settingsLoaded = true

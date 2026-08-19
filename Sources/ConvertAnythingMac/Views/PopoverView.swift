@@ -1,6 +1,5 @@
 import ConvertAnythingCore
 import SwiftUI
-import UniformTypeIdentifiers
 
 public struct PopoverView: View {
   @ObservedObject private var model: AppViewModel
