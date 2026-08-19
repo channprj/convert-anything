@@ -2,41 +2,6 @@ import ConvertAnythingCore
 import ConvertAnythingMac
 import Foundation
 
-struct MacTestCase: Sendable {
-  let name: String
-  let body: @Sendable () async throws -> Void
-
-  init(_ name: String, body: @escaping @Sendable () async throws -> Void) {
-    self.name = name
-    self.body = body
-  }
-}
-
-struct MacTestFailure: Error, CustomStringConvertible {
-  let description: String
-}
-
-func macExpectTrue(
-  _ value: @autoclosure () throws -> Bool,
-  _ message: @autoclosure () -> String = "Expected condition to be true"
-) throws {
-  guard try value() else { throw MacTestFailure(description: message()) }
-}
-
-func macExpectEqual<T: Equatable>(
-  _ actual: @autoclosure () throws -> T,
-  _ expected: @autoclosure () throws -> T
-) throws {
-  let actualValue = try actual()
-  let expectedValue = try expected()
-  guard actualValue == expectedValue else {
-    throw MacTestFailure(
-      description:
-        "Expected \(String(describing: expectedValue)), got \(String(describing: actualValue))"
-    )
-  }
-}
-
 actor FakeSettingsStore: SettingsServing {
   private var document: SettingsDocument
   private(set) var savedDocuments: [SettingsDocument] = []

@@ -1,11 +1,12 @@
 import ConvertAnythingCore
+import ConvertAnythingTestSupport
 import Foundation
 
 func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
-  -> [IntegrationTestCase]
+  -> [TestCase]
 {
   [
-    IntegrationTestCase(name: "real audio conversion preserves source and collision bytes") {
+    TestCase("real audio conversion preserves source and collision bytes") {
       let input = try environment.workingCopy(of: "voice.wav")
       let originalHash = try sha256(input)
       let collision = input.deletingPathExtension().appendingPathExtension("m4a")
@@ -17,16 +18,16 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try require(media.containerNames.contains("mov"), "M4A must use a MOV-family container")
-      try requireEqual(media.audioCodec, "aac", "M4A codec")
-      try requireEqual(try sha256(input), originalHash, "WAV source hash")
-      try requireEqual(try Data(contentsOf: collision), collisionBytes, "collision bytes")
-      try requireEqual(output.lastPathComponent, "voice-converted.m4a", "collision output name")
-      try requireEqual(
+      try expectTrue(media.containerNames.contains("mov"), "M4A must use a MOV-family container")
+      try expectEqual(media.audioCodec, "aac", "M4A codec")
+      try expectEqual(try sha256(input), originalHash, "WAV source hash")
+      try expectEqual(try Data(contentsOf: collision), collisionBytes, "collision bytes")
+      try expectEqual(output.lastPathComponent, "voice-converted.m4a", "collision output name")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "audio temporary files"
       )
     },
-    IntegrationTestCase(name: "real movie conversion produces VP9 and Opus") {
+    TestCase("real movie conversion produces VP9 and Opus") {
       let input = try environment.workingCopy(of: "movie.mov")
       let originalHash = try sha256(input)
       let plan = try integrationPlan(for: input, target: .webm)
@@ -35,17 +36,17 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try require(media.containerNames.contains("webm"), "Movie output must be WebM")
-      try requireEqual(media.videoCodec, "vp9", "WebM video codec")
-      try requireEqual(media.audioCodec, "opus", "WebM audio codec")
-      try requireEqual(media.width, 320, "WebM width")
-      try requireEqual(media.height, 180, "WebM height")
-      try requireEqual(try sha256(input), originalHash, "MOV source hash")
-      try requireEqual(
+      try expectTrue(media.containerNames.contains("webm"), "Movie output must be WebM")
+      try expectEqual(media.videoCodec, "vp9", "WebM video codec")
+      try expectEqual(media.audioCodec, "opus", "WebM audio codec")
+      try expectEqual(media.width, 320, "WebM width")
+      try expectEqual(media.height, 180, "WebM height")
+      try expectEqual(try sha256(input), originalHash, "MOV source hash")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "video temporary files"
       )
     },
-    IntegrationTestCase(name: "real opaque image conversion produces AVIF") {
+    TestCase("real opaque image conversion produces AVIF") {
       let input = try environment.workingCopy(of: "opaque.png")
       let originalHash = try sha256(input)
       let plan = try integrationPlan(for: input, target: .avif)
@@ -54,17 +55,17 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try require(media.containerNames.contains("avif"), "Image output must be AVIF")
-      try requireEqual(media.videoCodec, "av1", "AVIF codec")
-      try requireEqual(media.width, 96, "AVIF width")
-      try requireEqual(media.height, 64, "AVIF height")
-      try require(!media.hasAlpha, "Opaque input must remain opaque")
-      try requireEqual(try sha256(input), originalHash, "opaque PNG source hash")
-      try requireEqual(
+      try expectTrue(media.containerNames.contains("avif"), "Image output must be AVIF")
+      try expectEqual(media.videoCodec, "av1", "AVIF codec")
+      try expectEqual(media.width, 96, "AVIF width")
+      try expectEqual(media.height, 64, "AVIF height")
+      try expectTrue(!media.hasAlpha, "Opaque input must remain opaque")
+      try expectEqual(try sha256(input), originalHash, "opaque PNG source hash")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "image temporary files"
       )
     },
-    IntegrationTestCase(name: "real alpha image conversion preserves alpha") {
+    TestCase("real alpha image conversion preserves alpha") {
       let input = try environment.workingCopy(of: "alpha.png")
       let originalHash = try sha256(input)
       let plan = try integrationPlan(for: input, target: .avif)
@@ -73,16 +74,16 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try requireEqual(media.videoCodec, "av1", "alpha AVIF codec")
-      try requireEqual(media.width, 96, "alpha AVIF width")
-      try requireEqual(media.height, 64, "alpha AVIF height")
-      try require(media.hasAlpha, "Alpha AVIF must expose an auxiliary alpha stream")
-      try requireEqual(try sha256(input), originalHash, "alpha PNG source hash")
-      try requireEqual(
+      try expectEqual(media.videoCodec, "av1", "alpha AVIF codec")
+      try expectEqual(media.width, 96, "alpha AVIF width")
+      try expectEqual(media.height, 64, "alpha AVIF height")
+      try expectTrue(media.hasAlpha, "Alpha AVIF must expose an auxiliary alpha stream")
+      try expectEqual(try sha256(input), originalHash, "alpha PNG source hash")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "alpha temporary files"
       )
     },
-    IntegrationTestCase(name: "real m4a conversion produces MP3") {
+    TestCase("real m4a conversion produces MP3") {
       let input = try environment.workingCopy(of: "speech.m4a")
       let originalHash = try sha256(input)
       let plan = try integrationPlan(for: input, target: .mp3)
@@ -91,15 +92,15 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try requireEqual(output.pathExtension, "mp3", "MP3 extension")
-      try require(media.containerNames.contains("mp3"), "Audio output must be MP3")
-      try requireEqual(media.audioCodec, "mp3", "MP3 codec")
-      try requireEqual(try sha256(input), originalHash, "M4A source hash")
-      try requireEqual(
+      try expectEqual(output.pathExtension, "mp3", "MP3 extension")
+      try expectTrue(media.containerNames.contains("mp3"), "Audio output must be MP3")
+      try expectEqual(media.audioCodec, "mp3", "MP3 codec")
+      try expectEqual(try sha256(input), originalHash, "M4A source hash")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "mp3 temporary files"
       )
     },
-    IntegrationTestCase(name: "real webm conversion produces H.264 MP4") {
+    TestCase("real webm conversion produces H.264 MP4") {
       let input = try environment.workingCopy(of: "clip.webm")
       let originalHash = try sha256(input)
       let plan = try integrationPlan(for: input, target: .mp4)
@@ -108,17 +109,17 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try requireEqual(output.pathExtension, "mp4", "MP4 extension")
-      try require(media.containerNames.contains("mp4"), "Video output must be MP4")
-      try requireEqual(media.videoCodec, "h264", "MP4 video codec")
-      try requireEqual(media.width, 320, "MP4 width")
-      try requireEqual(media.height, 180, "MP4 height")
-      try requireEqual(try sha256(input), originalHash, "WebM source hash")
-      try requireEqual(
+      try expectEqual(output.pathExtension, "mp4", "MP4 extension")
+      try expectTrue(media.containerNames.contains("mp4"), "Video output must be MP4")
+      try expectEqual(media.videoCodec, "h264", "MP4 video codec")
+      try expectEqual(media.width, 320, "MP4 width")
+      try expectEqual(media.height, 180, "MP4 height")
+      try expectEqual(try sha256(input), originalHash, "WebM source hash")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "mp4 temporary files"
       )
     },
-    IntegrationTestCase(name: "real opaque webp conversion produces JPEG") {
+    TestCase("real opaque webp conversion produces JPEG") {
       let input = try environment.workingCopy(of: "opaque.webp")
       let originalHash = try sha256(input)
       let plan = try integrationPlan(for: input, target: .jpegOrPng)
@@ -127,17 +128,17 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try requireEqual(output.pathExtension, "jpg", "JPEG extension")
-      try requireEqual(media.videoCodec, "mjpeg", "JPEG codec")
-      try requireEqual(media.width, 96, "JPEG width")
-      try requireEqual(media.height, 64, "JPEG height")
-      try require(!media.hasAlpha, "Opaque WebP must produce an opaque JPEG")
-      try requireEqual(try sha256(input), originalHash, "opaque WebP source hash")
-      try requireEqual(
+      try expectEqual(output.pathExtension, "jpg", "JPEG extension")
+      try expectEqual(media.videoCodec, "mjpeg", "JPEG codec")
+      try expectEqual(media.width, 96, "JPEG width")
+      try expectEqual(media.height, 64, "JPEG height")
+      try expectTrue(!media.hasAlpha, "Opaque WebP must produce an opaque JPEG")
+      try expectEqual(try sha256(input), originalHash, "opaque WebP source hash")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "jpeg temporary files"
       )
     },
-    IntegrationTestCase(name: "real alpha webp conversion produces PNG with alpha") {
+    TestCase("real alpha webp conversion produces PNG with alpha") {
       let input = try environment.workingCopy(of: "alpha.webp")
       let originalHash = try sha256(input)
       let plan = try integrationPlan(for: input, target: .jpegOrPng)
@@ -146,17 +147,17 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         from: await environment.service().convert(plan) { _ in }
       )
       let media = try await environment.probe(output)
-      try requireEqual(output.pathExtension, "png", "PNG extension")
-      try requireEqual(media.videoCodec, "png", "PNG codec")
-      try requireEqual(media.width, 96, "PNG width")
-      try requireEqual(media.height, 64, "PNG height")
-      try require(media.hasAlpha, "Alpha WebP must keep alpha in PNG")
-      try requireEqual(try sha256(input), originalHash, "alpha WebP source hash")
-      try requireEqual(
+      try expectEqual(output.pathExtension, "png", "PNG extension")
+      try expectEqual(media.videoCodec, "png", "PNG codec")
+      try expectEqual(media.width, 96, "PNG width")
+      try expectEqual(media.height, 64, "PNG height")
+      try expectTrue(media.hasAlpha, "Alpha WebP must keep alpha in PNG")
+      try expectEqual(try sha256(input), originalHash, "alpha WebP source hash")
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "png temporary files"
       )
     },
-    IntegrationTestCase(name: "corrupt media leaves no final or temporary artifact") {
+    TestCase("corrupt media leaves no final or temporary artifact") {
       let directory = environment.fixtureDirectory
         .appendingPathComponent("test-runs", isDirectory: true)
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -167,28 +168,28 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
 
       let outcome = await environment.service().convert(plan) { _ in }
       guard case .failed(let failure) = outcome else {
-        throw IntegrationTestFailure(description: "Expected corrupt media failure, got \(outcome)")
+        throw TestFailure(description: "Expected corrupt media failure, got \(outcome)")
       }
-      try requireEqual(failure.category, .invalidMedia, "corrupt media category")
-      try require(
+      try expectEqual(failure.category, .invalidMedia, "corrupt media category")
+      try expectTrue(
         !FileManager.default.fileExists(atPath: plan.output.final.path), "No final output")
-      try requireEqual(try hiddenTemporaryFiles(in: directory), [], "corrupt temporary files")
+      try expectEqual(try hiddenTemporaryFiles(in: directory), [], "corrupt temporary files")
     },
-    IntegrationTestCase(name: "canceling a live conversion removes every artifact") {
+    TestCase("canceling a live conversion removes every artifact") {
       let input = try environment.workingCopy(of: "long.mov")
       let plan = try integrationPlan(for: input, target: .webm)
       let service = environment.service()
       let conversion = Task { await service.convert(plan) { _ in } }
 
-      try await waitUntil(timeout: .seconds(8)) {
+      try await eventually(timeout: .seconds(8)) {
         FileManager.default.fileExists(atPath: plan.output.temporary.path)
       }
       await service.cancel(jobID: plan.id)
       let outcome = await conversion.value
-      try requireEqual(outcome, .canceled, "canceled conversion outcome")
-      try require(
+      try expectEqual(outcome, .canceled, "canceled conversion outcome")
+      try expectTrue(
         !FileManager.default.fileExists(atPath: plan.output.final.path), "No canceled final")
-      try requireEqual(
+      try expectEqual(
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [],
         "canceled temporary files")
     },

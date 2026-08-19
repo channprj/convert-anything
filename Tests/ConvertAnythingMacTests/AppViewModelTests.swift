@@ -1,12 +1,13 @@
 import ConvertAnythingCore
 import ConvertAnythingMac
+import ConvertAnythingTestSupport
 import Foundation
 
-let appViewModelTests: [MacTestCase] = [
-  MacTestCase("accepted drop requests notification once and enqueues plans") {
+let appViewModelTests: [TestCase] = [
+  TestCase("accepted drop requests notification once and enqueues plans") {
     try await acceptedDropRequestsNotificationOnce()
   },
-  MacTestCase("denied notification keeps drain summary in popover") {
+  TestCase("denied notification keeps drain summary in popover") {
     try await deniedNotificationKeepsSummary()
   },
 ]
@@ -38,8 +39,8 @@ private func acceptedDropRequestsNotificationOnce() async throws {
 
   let requestCount = await notifications.requestCount()
   let plans = await queue.enqueued()
-  try macExpectEqual(requestCount, 1)
-  try macExpectEqual(plans.map(\.input), [wav, mov, png])
+  try expectEqual(requestCount, 1)
+  try expectEqual(plans.map(\.input), [wav, mov, png])
 }
 
 @MainActor
@@ -66,6 +67,6 @@ private func deniedNotificationKeepsSummary() async throws {
   await model.receiveDrain(summary)
 
   let delivered = await notifications.deliveredSummaries()
-  try macExpectEqual(model.lastDrainSummary, summary)
-  try macExpectEqual(delivered, [])
+  try expectEqual(model.lastDrainSummary, summary)
+  try expectEqual(delivered, [])
 }

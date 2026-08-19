@@ -1,9 +1,10 @@
 import ConvertAnythingCore
 import ConvertAnythingMac
+import ConvertAnythingTestSupport
 import Foundation
 
-let localNotificationServiceTests: [MacTestCase] = [
-  MacTestCase("completion summary includes every drain count without a full path") {
+let localNotificationServiceTests: [TestCase] = [
+  TestCase("completion summary includes every drain count without a full path") {
     let summary = DrainSummary(
       succeededCount: 2,
       failedCount: 1,
@@ -14,13 +15,13 @@ let localNotificationServiceTests: [MacTestCase] = [
 
     let content = LocalNotificationService.content(for: summary)
 
-    try macExpectEqual(content.title, "Conversion finished with issues")
-    try macExpectTrue(content.body.contains("2 completed"))
-    try macExpectTrue(content.body.contains("1 failed"))
-    try macExpectTrue(content.body.contains("0 canceled"))
-    try macExpectTrue(content.body.contains("saved"))
-    try macExpectTrue(!content.body.contains("/Users/example"))
-    try macExpectEqual(
+    try expectEqual(content.title, "Conversion finished with issues")
+    try expectTrue(content.body.contains("2 completed"))
+    try expectTrue(content.body.contains("1 failed"))
+    try expectTrue(content.body.contains("0 canceled"))
+    try expectTrue(content.body.contains("saved"))
+    try expectTrue(!content.body.contains("/Users/example"))
+    try expectEqual(
       content.userInfo[LocalNotificationService.outputPathUserInfoKey] as? String,
       summary.lastSuccessfulOutput?.path
     )

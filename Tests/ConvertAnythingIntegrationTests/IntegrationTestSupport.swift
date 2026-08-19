@@ -1,26 +1,6 @@
 import ConvertAnythingCore
+import ConvertAnythingTestSupport
 import Foundation
-
-struct IntegrationTestCase: Sendable {
-  let name: String
-  let body: @Sendable () async throws -> Void
-}
-
-struct IntegrationTestFailure: Error, CustomStringConvertible {
-  let description: String
-}
-
-func require(_ condition: @autoclosure () throws -> Bool, _ message: String) throws {
-  guard try condition() else { throw IntegrationTestFailure(description: message) }
-}
-
-func requireEqual<T: Equatable>(_ actual: T, _ expected: T, _ context: String) throws {
-  guard actual == expected else {
-    throw IntegrationTestFailure(
-      description: "\(context): expected \(expected), got \(actual)"
-    )
-  }
-}
 
 struct IntegrationEnvironment: Sendable {
   let fixtureDirectory: URL
@@ -88,7 +68,7 @@ func integrationPlan(for input: URL, target: TargetFormat) throws -> ConversionP
 
 func successfulOutput(from outcome: ConversionOutcome) throws -> URL {
   guard case .succeeded(let output, _) = outcome else {
-    throw IntegrationTestFailure(description: "Expected success, got \(outcome)")
+    throw TestFailure(description: "Expected success, got \(outcome)")
   }
   return output
 }
@@ -106,7 +86,7 @@ func sha256(_ url: URL) throws -> String {
     let digest = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
       .split(separator: " ").first
   else {
-    throw IntegrationTestFailure(description: "Could not hash \(url.lastPathComponent)")
+    throw TestFailure(description: "Could not hash \(url.lastPathComponent)")
   }
   return String(digest)
 }
@@ -117,17 +97,4 @@ func hiddenTemporaryFiles(in directory: URL) throws -> [URL] {
     includingPropertiesForKeys: nil,
     options: []
   ).filter { $0.lastPathComponent.contains(".convert-anything-") }
-}
-
-func waitUntil(
-  timeout: Duration,
-  condition: @escaping @Sendable () -> Bool
-) async throws {
-  let clock = ContinuousClock()
-  let deadline = clock.now.advanced(by: timeout)
-  while clock.now < deadline {
-    if condition() { return }
-    try await Task.sleep(for: .milliseconds(20))
-  }
-  throw IntegrationTestFailure(description: "Condition was not met before timeout")
 }

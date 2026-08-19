@@ -13,19 +13,23 @@ let package = Package(
     .target(name: "ConvertAnythingCore"),
     .target(name: "ConvertAnythingMac", dependencies: ["ConvertAnythingCore"]),
     .executableTarget(name: "ConvertAnythingApp", dependencies: ["ConvertAnythingMac"]),
+    .target(
+      name: "ConvertAnythingTestSupport",
+      path: "Tests/ConvertAnythingTestSupport"
+    ),
     .executableTarget(
       name: "ConvertAnythingCoreTests",
-      dependencies: ["ConvertAnythingCore"],
+      dependencies: ["ConvertAnythingCore", "ConvertAnythingTestSupport"],
       path: "Tests/ConvertAnythingCoreTests"
     ),
     .executableTarget(
       name: "ConvertAnythingMacTests",
-      dependencies: ["ConvertAnythingMac"],
+      dependencies: ["ConvertAnythingMac", "ConvertAnythingTestSupport"],
       path: "Tests/ConvertAnythingMacTests"
     ),
     .executableTarget(
       name: "ConvertAnythingIntegrationTests",
-      dependencies: ["ConvertAnythingCore"],
+      dependencies: ["ConvertAnythingCore", "ConvertAnythingTestSupport"],
       path: "Tests/ConvertAnythingIntegrationTests"
     ),
   ]

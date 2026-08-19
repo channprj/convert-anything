@@ -1,4 +1,5 @@
 import ConvertAnythingCore
+import ConvertAnythingTestSupport
 import Foundation
 
 let ffmpegRunnerTests: [TestCase] = [

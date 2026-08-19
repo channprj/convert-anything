@@ -1,9 +1,10 @@
 import AppKit
 import ConvertAnythingMac
+import ConvertAnythingTestSupport
 import Foundation
 
-let statusBarDropViewTests: [MacTestCase] = [
-  MacTestCase("pasteboard extracts only file URLs in original order") {
+let statusBarDropViewTests: [TestCase] = [
+  TestCase("pasteboard extracts only file URLs in original order") {
     try await pasteboardExtractsOnlyFileURLs()
   }
 ]
@@ -23,5 +24,5 @@ private func pasteboardExtractsOnlyFileURLs() throws {
 
   let urls = StatusBarDropView.fileURLs(from: pasteboard)
 
-  try macExpectEqual(urls, [first as URL, second as URL])
+  try expectEqual(urls, [first as URL, second as URL])
 }

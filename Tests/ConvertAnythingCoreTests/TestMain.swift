@@ -1,28 +1,12 @@
-import Darwin
-import Foundation
+import ConvertAnythingTestSupport
 
 @main
 struct TestMain {
   static func main() async {
-    let tests =
+    await runTests(
       ruleCatalogTests + mappingStoreTests + dropAdmissionServiceTests + outputPathResolverTests
-      + encoderArgumentsTests + ffprobeClientTests + ffmpegRunnerTests + conversionServiceTests
-      + conversionQueueTests + drainSummaryTests
-    var failures: [(String, Error)] = []
-
-    for test in tests {
-      do {
-        try await test.body()
-        print("PASS \(test.name)")
-      } catch {
-        failures.append((test.name, error))
-        print("FAIL \(test.name): \(error)")
-      }
-    }
-
-    print("\(tests.count - failures.count) passed, \(failures.count) failed, \(tests.count) total")
-    if !failures.isEmpty {
-      exit(EXIT_FAILURE)
-    }
+        + encoderArgumentsTests + ffprobeClientTests + ffmpegRunnerTests + conversionServiceTests
+        + conversionQueueTests + drainSummaryTests
+    )
   }
 }
