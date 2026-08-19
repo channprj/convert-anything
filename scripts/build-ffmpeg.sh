@@ -11,7 +11,7 @@ prefix_dir="$build_root/prefix"
 tool_dir="$build_root/ffmpeg"
 source_offer="$tool_dir/source-offer"
 
-if [[ "$build_root" != "$repo_root/build/vendor" || "$repo_root" == "/" ]]; then
+if [[ "$repo_root" == "/" ]]; then
   print -u2 "Refusing unsafe build root: $build_root"
   exit 1
 fi

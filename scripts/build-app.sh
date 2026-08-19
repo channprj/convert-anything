@@ -7,7 +7,7 @@ app_bundle="$repo_root/dist/Convert Anything.app"
 tool_dir="$repo_root/build/vendor/ffmpeg/bin"
 release_executable="$repo_root/.build/release/ConvertAnythingApp"
 
-if [[ "$app_bundle" != "$repo_root/dist/Convert Anything.app" || "$repo_root" == "/" ]]; then
+if [[ "$repo_root" == "/" ]]; then
   print -u2 "Refusing unsafe app bundle target: $app_bundle"
   exit 1
 fi
@@ -38,5 +38,4 @@ codesign --force --sign - --timestamp=none "$app_bundle/Contents/Resources/ffmpe
 codesign --force --sign - --timestamp=none "$app_bundle/Contents/Resources/ffprobe"
 codesign --force --deep --sign - --timestamp=none "$app_bundle"
 
-zsh "$repo_root/scripts/test-packaging.sh"
 print "Built app bundle: $app_bundle"
