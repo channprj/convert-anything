@@ -37,8 +37,8 @@ private func acceptedDropRequestsNotificationOnce() async throws {
   await model.handleDrop([wav, mov])
   await model.handleDrop([png])
 
-  let requestCount = await notifications.requestCount()
-  let plans = await queue.enqueued()
+  let requestCount = await notifications.authorizationRequestCount
+  let plans = await queue.enqueuedPlans
   try expectEqual(requestCount, 1)
   try expectEqual(plans.map(\.input), [wav, mov, png])
 }
@@ -66,7 +66,7 @@ private func deniedNotificationKeepsSummary() async throws {
 
   await model.receiveDrain(summary)
 
-  let delivered = await notifications.deliveredSummaries()
+  let delivered = await notifications.delivered
   try expectEqual(model.lastDrainSummary, summary)
   try expectEqual(delivered, [])
 }

@@ -5,7 +5,7 @@ import Foundation
 let ffmpegRunnerTests: [TestCase] = [
   TestCase("foundation executor launches directly and drains standard output") {
     let executor = FoundationCommandExecutor()
-    let recorder = LineRecorder()
+    let recorder = Recorder<String>()
     let request = CommandRequest(
       id: UUID(),
       executable: URL(fileURLWithPath: "/usr/bin/printf"),
@@ -47,7 +47,7 @@ let ffmpegRunnerTests: [TestCase] = [
       executable: URL(fileURLWithPath: "/tools/ffmpeg"),
       executor: executor
     )
-    let recorder = ProgressRecorder()
+    let recorder = Recorder<Double>()
 
     let result = try await runner.run(
       plan: plan,
@@ -89,28 +89,15 @@ let ffmpegRunnerTests: [TestCase] = [
   },
 ]
 
-private final class ProgressRecorder: @unchecked Sendable {
+private final class Recorder<Value>: @unchecked Sendable {
   private let lock = NSLock()
-  private var storage: [Double] = []
+  private var storage: [Value] = []
 
-  var values: [Double] {
+  var values: [Value] {
     lock.withLock { storage }
   }
 
-  func append(_ value: Double) {
-    lock.withLock { storage.append(value) }
-  }
-}
-
-private final class LineRecorder: @unchecked Sendable {
-  private let lock = NSLock()
-  private var storage: [String] = []
-
-  var values: [String] {
-    lock.withLock { storage }
-  }
-
-  func append(_ value: String) {
+  func append(_ value: Value) {
     lock.withLock { storage.append(value) }
   }
 }

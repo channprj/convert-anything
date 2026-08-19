@@ -92,10 +92,6 @@ actor FakeQueue: QueueServing {
   func drainEvents() async -> AsyncStream<DrainSummary> {
     AsyncStream { _ in }
   }
-
-  func enqueued() -> [ConversionPlan] {
-    enqueuedPlans
-  }
 }
 
 actor FakeNotificationService: NotificationServing {
@@ -117,14 +113,6 @@ actor FakeNotificationService: NotificationServing {
 
   func deliver(_ summary: DrainSummary) async throws {
     delivered.append(summary)
-  }
-
-  func requestCount() -> Int {
-    authorizationRequestCount
-  }
-
-  func deliveredSummaries() -> [DrainSummary] {
-    delivered
   }
 }
 
