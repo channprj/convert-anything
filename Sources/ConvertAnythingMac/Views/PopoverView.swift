@@ -30,8 +30,6 @@ public struct PopoverView: View {
     .dropDestination(for: URL.self) { urls, _ in
       Task { await model.handleDrop(urls) }
       return !urls.isEmpty
-    } isTargeted: { active in
-      model.isDragActive = active
     }
   }
 
