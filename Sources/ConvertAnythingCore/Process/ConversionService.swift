@@ -40,6 +40,8 @@ public protocol ConversionServicing: Sendable {
 }
 
 public final class ConversionService: ConversionServicing, @unchecked Sendable {
+  private static let mp4FamilyContainers = Set(["mov", "mp4", "m4a", "3gp", "3g2", "mj2"])
+
   private let probe: FFprobeClient
   private let runner: FFmpegRunner
   private let fileManager: FileManager
@@ -99,7 +101,7 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
     if await cancellations.consume(plan.id) { return .canceled }
 
     guard result.terminationStatus == 0 else {
-      let message = lastRelevantLine(in: result.standardError, fallback: "Media conversion failed")
+      let message = result.lastStandardErrorLine(fallback: "Media conversion failed")
       let category: ConversionFailureCategory =
         isInvalidMediaMessage(message)
         ? .invalidMedia : .encoderFailed
@@ -183,8 +185,7 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
   ) -> Bool {
     switch target {
     case .m4a:
-      let m4aContainers = Set(["mov", "mp4", "m4a", "3gp", "3g2", "mj2"])
-      return !m4aContainers.isDisjoint(with: output.containerNames)
+      return !Self.mp4FamilyContainers.isDisjoint(with: output.containerNames)
         && output.audioCodec == "aac"
         && matchingOptional(input.channelCount, output.channelCount)
     case .mp3:
@@ -192,9 +193,8 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
         && output.audioCodec == "mp3"
         && matchingOptional(input.channelCount, output.channelCount)
     case .mp4:
-      let mp4Containers = Set(["mov", "mp4", "m4a", "3gp", "3g2", "mj2"])
       let audioMatches = input.audioCodec == nil || output.audioCodec == "aac"
-      return !mp4Containers.isDisjoint(with: output.containerNames)
+      return !Self.mp4FamilyContainers.isDisjoint(with: output.containerNames)
         && output.videoCodec == "h264"
         && audioMatches
         && matchingOptional(input.width, output.width)
@@ -249,13 +249,6 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
     _ message: String
   ) -> ConversionOutcome {
     .failed(ConversionFailure(category: category, message: message))
-  }
-
-  private func lastRelevantLine(in data: Data, fallback: String) -> String {
-    String(decoding: data, as: UTF8.self)
-      .split(whereSeparator: \.isNewline)
-      .map(String.init)
-      .last ?? fallback
   }
 
   private func isInvalidMediaMessage(_ message: String) -> Bool {

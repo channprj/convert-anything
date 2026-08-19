@@ -69,7 +69,6 @@ public actor ConversionQueue: QueueServing {
   private var drainTask: Task<Void, Never>?
   private var lastProgressUpdate: [UUID: ContinuousClock.Instant] = [:]
   private var accumulator = DrainAccumulator()
-  private var drainHasWork = false
   private var snapshotContinuations: [UUID: AsyncStream<QueueSnapshot>.Continuation] = [:]
   private var drainContinuations: [UUID: AsyncStream<DrainSummary>.Continuation] = [:]
 
@@ -87,7 +86,6 @@ public actor ConversionQueue: QueueServing {
     }
     guard !acceptedIDs.isEmpty else { return }
 
-    drainHasWork = true
     publishSnapshot()
     startDrainIfNeeded()
   }
@@ -239,10 +237,8 @@ public actor ConversionQueue: QueueServing {
 
   private func finishDrain() {
     drainTask = nil
-    guard drainHasWork else { return }
     let summary = accumulator.summary
     accumulator = DrainAccumulator()
-    drainHasWork = false
     for continuation in drainContinuations.values {
       continuation.yield(summary)
     }

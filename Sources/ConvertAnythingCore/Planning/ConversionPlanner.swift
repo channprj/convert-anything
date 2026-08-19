@@ -11,8 +11,7 @@ public struct ConversionPlanner: ConversionPlanning {
   private let outputPathResolver: OutputPathResolver
 
   public init() {
-    availableCapacity = Self.importantUsageCapacity
-    outputPathResolver = OutputPathResolver()
+    self.init(availableCapacity: Self.importantUsageCapacity)
   }
 
   public init(availableCapacity: @escaping @Sendable (URL) throws -> Int64) {

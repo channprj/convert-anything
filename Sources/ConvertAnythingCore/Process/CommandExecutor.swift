@@ -24,6 +24,16 @@ public struct CommandResult: Equatable, Sendable {
   }
 }
 
+extension CommandResult {
+  /// Last line of stderr, used as the human-facing failure detail.
+  func lastStandardErrorLine(fallback: String) -> String {
+    String(decoding: standardError, as: UTF8.self)
+      .split(whereSeparator: \.isNewline)
+      .map(String.init)
+      .last ?? fallback
+  }
+}
+
 public enum CommandExecutorError: Error, Equatable, Sendable {
   case launchFailed(String)
 }

@@ -21,11 +21,7 @@ public actor MappingStore: SettingsServing {
 
     let data = try Data(contentsOf: fileURL)
     let decoded = try JSONDecoder().decode(SettingsDocument.self, from: data)
-    let migrated = try Self.migrate(decoded)
-    let validated = SettingsDocument(
-      schemaVersion: migrated.schemaVersion,
-      rules: try RuleValidator.validate(migrated.rules)
-    )
+    let validated = try Self.migrateAndValidate(decoded)
 
     if validated != decoded {
       try persist(validated)
@@ -34,15 +30,20 @@ public actor MappingStore: SettingsServing {
   }
 
   public func save(_ document: SettingsDocument) async throws {
-    let migrated = try Self.migrate(document)
-    let validated = SettingsDocument(
+    try persist(Self.migrateAndValidate(document))
+  }
+
+  private nonisolated static func migrateAndValidate(
+    _ document: SettingsDocument
+  ) throws -> SettingsDocument {
+    let migrated = try migrate(document)
+    return SettingsDocument(
       schemaVersion: migrated.schemaVersion,
       rules: try RuleValidator.validate(migrated.rules)
     )
-    try persist(validated)
   }
 
-  public nonisolated static func migrate(_ document: SettingsDocument) throws -> SettingsDocument {
+  private nonisolated static func migrate(_ document: SettingsDocument) throws -> SettingsDocument {
     guard document.schemaVersion >= 0,
       document.schemaVersion <= SettingsDocument.currentSchemaVersion
     else {

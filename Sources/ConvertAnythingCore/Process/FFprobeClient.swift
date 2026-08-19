@@ -22,7 +22,7 @@ public struct FFprobeClient: Sendable {
     )
     let result = try await executor.execute(request) { _ in }
     guard result.terminationStatus == 0 else {
-      throw MediaProbeError.rejected(Self.lastRelevantLine(in: result.standardError))
+      throw MediaProbeError.rejected(result.lastStandardErrorLine(fallback: "Media probe failed"))
     }
 
     let response: ProbeResponse
@@ -66,13 +66,6 @@ public struct FFprobeClient: Sendable {
       hasAlpha: hasPixelAlpha || hasAuxiliaryAlpha,
       rotationDegrees: rotation
     )
-  }
-
-  private static func lastRelevantLine(in data: Data) -> String {
-    String(decoding: data, as: UTF8.self)
-      .split(whereSeparator: \.isNewline)
-      .map(String.init)
-      .last ?? "Media probe failed"
   }
 }
 
