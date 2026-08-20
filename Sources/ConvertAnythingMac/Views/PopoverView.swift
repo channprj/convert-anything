@@ -64,7 +64,7 @@ public struct PopoverView: View {
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)
       }
-      .frame(maxWidth: .infinity, minHeight: 210)
+      .frame(maxWidth: .infinity, minHeight: 210, maxHeight: .infinity)
       .padding()
     } else {
       ScrollView {
