@@ -46,7 +46,15 @@ dist/Convert Anything.app
 
 ### Install
 
-After the one-time toolchain build, one command builds the app, quits a running copy, replaces `/Applications/Convert Anything.app`, and relaunches it:
+After this repository becomes public, install directly with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/channprj/convert-anything/main/install.sh | zsh
+```
+
+The root installer checks the platform and build dependencies, downloads a clean source archive, builds the pinned media toolchain, builds the app, replaces `/Applications/Convert Anything.app`, and launches it. The media build can take several minutes.
+
+From an existing checkout with an already-built media toolchain, use the faster local installer:
 
 ```bash
 zsh scripts/install.sh
