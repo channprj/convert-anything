@@ -75,17 +75,13 @@ public final class StatusBarController {
       return
     }
 
-    let symbolName: String
     if !model.toolsAvailable || warningVisible {
-      symbolName = "exclamationmark.triangle"
+      button.image = Self.systemImage("exclamationmark.triangle")
     } else if model.snapshot.isRunning {
-      symbolName = "arrow.triangle.2.circlepath"
+      button.image = Self.systemImage("arrow.triangle.2.circlepath")
     } else {
-      symbolName = "arrow.down.right.and.arrow.up.left"
+      button.image = BrandGlyph.statusItemImage()
     }
-    button.image = NSImage(
-      systemSymbolName: symbolName, accessibilityDescription: "Convert Anything")
-    button.image?.isTemplate = true
     if model.snapshot.unfinishedCount > 0 {
       statusItem.length = NSStatusItem.variableLength
       button.title = " \(model.snapshot.unfinishedCount)"
@@ -93,6 +89,12 @@ public final class StatusBarController {
       statusItem.length = NSStatusItem.squareLength
       button.title = ""
     }
+  }
+
+  private static func systemImage(_ name: String) -> NSImage? {
+    let image = NSImage(systemSymbolName: name, accessibilityDescription: "Convert Anything")
+    image?.isTemplate = true
+    return image
   }
 
   private func togglePopover() {

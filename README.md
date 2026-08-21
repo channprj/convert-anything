@@ -44,6 +44,14 @@ The first command downloads release archives, verifies every SHA-256 value, and 
 dist/Convert Anything.app
 ```
 
+### App Icon
+
+The app icon and the menu bar item draw the same mark, defined once in `Sources/ConvertAnythingMac/StatusBar/BrandGlyph.swift`. `App/AppIcon.icns` is committed, so a normal build needs nothing extra. After changing the glyph, regenerate it:
+
+```bash
+zsh scripts/make-appicon.sh
+```
+
 ## Use
 
 1. Start the app. It appears only in the menu bar.

@@ -5,7 +5,7 @@ struct MacTestMain {
   static func main() async {
     await runTests(
       statusBarDropViewTests + appViewModelTests + localNotificationServiceTests
-        + popoverViewTests
+        + popoverViewTests + brandGlyphTests
     )
   }
 }

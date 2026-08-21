@@ -23,6 +23,7 @@ mkdir -p "$app_bundle/Contents/MacOS" "$app_bundle/Contents/Resources"
 cp "$release_executable" "$app_bundle/Contents/MacOS/ConvertAnything"
 cp "$repo_root/App/Info.plist" "$app_bundle/Contents/Info.plist"
 cp "$tool_dir/ffmpeg" "$tool_dir/ffprobe" "$app_bundle/Contents/Resources/"
+cp "$repo_root/App/AppIcon.icns" "$app_bundle/Contents/Resources/"
 cp "$repo_root/THIRD_PARTY_NOTICES.md" "$app_bundle/Contents/Resources/"
 cp -R "$tool_dir/../source-offer" "$app_bundle/Contents/Resources/source-offer"
 chmod +x \

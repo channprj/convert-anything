@@ -15,5 +15,5 @@ zsh scripts/runtime-smoke.sh
 zsh scripts/test-packaging.sh
 git diff --check
 
-print "All checks passed: 76 core, 5 macOS, 10 integration"
+print "All checks passed: 76 core, 6 macOS, 10 integration"
 print "Artifact: $repo_root/dist/Convert Anything.app"
