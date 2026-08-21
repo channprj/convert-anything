@@ -6,6 +6,7 @@ repo_root="${script_dir:h}"
 cd "$repo_root"
 
 swift format lint --strict --recursive Package.swift Sources Tests
+zsh scripts/test-install.sh
 swift run ConvertAnythingCoreTests
 swift run ConvertAnythingMacTests
 swift build -c release --product ConvertAnythingApp
