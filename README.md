@@ -44,6 +44,14 @@ The first command downloads release archives, verifies every SHA-256 value, and 
 dist/Convert Anything.app
 ```
 
+### Install
+
+After the one-time toolchain build, one command builds the app, quits a running copy, replaces `/Applications/Convert Anything.app`, and relaunches it:
+
+```bash
+zsh scripts/install.sh
+```
+
 ### App Icon
 
 The app icon and the menu bar item draw the same mark, defined once in `Sources/ConvertAnythingMac/StatusBar/BrandGlyph.swift`. `App/AppIcon.icns` is committed, so a normal build needs nothing extra. After changing the glyph, regenerate it:
