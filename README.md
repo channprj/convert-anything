@@ -101,7 +101,7 @@ After building the media toolchain, run the complete acceptance gate:
 zsh scripts/check.sh
 ```
 
-It runs Swift formatting checks, 76 core tests, 4 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, and a packaged runtime smoke test. The runtime test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
+It runs Swift formatting checks, 76 core tests, 6 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, and a packaged runtime smoke test. The runtime test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
 
 Individual gates are also available:
 
