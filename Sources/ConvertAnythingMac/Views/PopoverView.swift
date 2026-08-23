@@ -3,15 +3,18 @@ import SwiftUI
 
 public struct PopoverView: View {
   @ObservedObject private var model: AppViewModel
+  @ObservedObject private var dropPresentation: DropPresentationCoordinator
   private let onSettings: @MainActor () -> Void
   private let onQuit: @MainActor () -> Void
 
   public init(
     model: AppViewModel,
+    dropPresentation: DropPresentationCoordinator,
     onSettings: @escaping @MainActor () -> Void,
     onQuit: @escaping @MainActor () -> Void
   ) {
     self.model = model
+    self.dropPresentation = dropPresentation
     self.onSettings = onSettings
     self.onQuit = onQuit
   }
@@ -27,8 +30,12 @@ public struct PopoverView: View {
     .frame(width: 360)
     .frame(minHeight: 330, maxHeight: 520)
     .dropDestination(for: URL.self) { urls, _ in
+      guard !urls.isEmpty else { return false }
+      dropPresentation.completeDrop()
       Task { await model.handleDrop(urls) }
-      return !urls.isEmpty
+      return true
+    } isTargeted: { active in
+      dropPresentation.setTargeted(active, at: .popover)
     }
   }
 

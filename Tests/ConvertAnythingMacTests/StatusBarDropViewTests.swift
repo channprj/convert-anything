@@ -6,7 +6,16 @@ import Foundation
 let statusBarDropViewTests: [TestCase] = [
   TestCase("pasteboard extracts only file URLs in original order") {
     try await pasteboardExtractsOnlyFileURLs()
-  }
+  },
+  TestCase("status item presentation has no drag-only expansion") {
+    let idle = StatusItemTextPresentation.make(unfinishedCount: 0)
+    try expectEqual(idle.length, NSStatusItem.squareLength)
+    try expectEqual(idle.title, "")
+
+    let running = StatusItemTextPresentation.make(unfinishedCount: 3)
+    try expectEqual(running.length, NSStatusItem.variableLength)
+    try expectEqual(running.title, " 3")
+  },
 ]
 
 @MainActor

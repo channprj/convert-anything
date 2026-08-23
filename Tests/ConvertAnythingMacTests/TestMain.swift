@@ -4,8 +4,8 @@ import ConvertAnythingTestSupport
 struct MacTestMain {
   static func main() async {
     await runTests(
-      statusBarDropViewTests + appViewModelTests + localNotificationServiceTests
-        + popoverViewTests + brandGlyphTests
+      dropPresentationCoordinatorTests + statusBarDropViewTests + appViewModelTests
+        + localNotificationServiceTests + popoverViewTests + brandGlyphTests
     )
   }
 }

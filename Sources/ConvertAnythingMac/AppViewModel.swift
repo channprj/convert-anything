@@ -50,7 +50,6 @@ public final class AppViewModel: ObservableObject {
   @Published public private(set) var admissionErrors: [String] = []
   @Published public private(set) var lastDrainSummary: DrainSummary?
   @Published public private(set) var settingsError: String?
-  @Published public var isDragActive = false
   @Published public private(set) var toolsAvailable: Bool
 
   private let dependencies: ViewModelDependencies

@@ -32,7 +32,12 @@ private func emptyPopoverFillsFixedHeight() throws {
   try expectTrue(model.snapshot.jobs.isEmpty, "Popover must render its empty state")
 
   let host = NSHostingView(
-    rootView: PopoverView(model: model, onSettings: {}, onQuit: {})
+    rootView: PopoverView(
+      model: model,
+      dropPresentation: DropPresentationCoordinator(),
+      onSettings: {},
+      onQuit: {}
+    )
   )
   host.frame = NSRect(origin: .zero, size: size)
   let window = NSWindow(

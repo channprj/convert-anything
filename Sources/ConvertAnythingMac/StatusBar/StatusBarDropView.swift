@@ -2,12 +2,16 @@ import AppKit
 
 public final class StatusBarDropView: NSView {
   public var onClick: @MainActor () -> Void = {}
-  public var onDragActiveChanged: @MainActor (Bool) -> Void = { _ in }
+  public var onTargetedChanged: @MainActor (Bool) -> Void = { _ in }
   public var onDropURLs: @MainActor ([URL]) -> Void = { _ in }
 
   public override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
     registerForDraggedTypes([.fileURL])
+    setAccessibilityElement(true)
+    setAccessibilityRole(.button)
+    setAccessibilityLabel("Convert Anything")
+    setAccessibilityHelp("Drop files to convert")
   }
 
   @available(*, unavailable)
@@ -18,17 +22,17 @@ public final class StatusBarDropView: NSView {
   public override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
     let urls = Self.fileURLs(from: sender.draggingPasteboard)
     guard !urls.isEmpty else { return [] }
-    onDragActiveChanged(true)
+    onTargetedChanged(true)
     return .copy
   }
 
   public override func draggingExited(_ sender: (any NSDraggingInfo)?) {
-    onDragActiveChanged(false)
+    onTargetedChanged(false)
   }
 
   public override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
     let urls = Self.fileURLs(from: sender.draggingPasteboard)
-    onDragActiveChanged(false)
+    onTargetedChanged(false)
     guard !urls.isEmpty else { return false }
     onDropURLs(urls)
     return true

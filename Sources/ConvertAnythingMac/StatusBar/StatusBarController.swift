@@ -2,13 +2,27 @@ import AppKit
 import Combine
 import SwiftUI
 
+public struct StatusItemTextPresentation: Equatable {
+  public let length: CGFloat
+  public let title: String
+
+  public static func make(unfinishedCount: Int) -> Self {
+    if unfinishedCount > 0 {
+      return Self(length: NSStatusItem.variableLength, title: " \(unfinishedCount)")
+    }
+    return Self(length: NSStatusItem.squareLength, title: "")
+  }
+}
+
 @MainActor
 public final class StatusBarController {
   private let statusItem: NSStatusItem
   private let popover = NSPopover()
   private let model: AppViewModel
   private let dropView: StatusBarDropView
+  private let dropPresentation: DropPresentationCoordinator
   private var cancellables = Set<AnyCancellable>()
+  private var dragPopoverSession = DragPopoverSession()
   private var warningVisible = false
 
   public init(
@@ -17,16 +31,23 @@ public final class StatusBarController {
     onQuit: @escaping @MainActor () -> Void
   ) {
     self.model = model
+    dropPresentation = DropPresentationCoordinator()
     statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     dropView = StatusBarDropView(frame: .zero)
 
     popover.behavior = .transient
     popover.contentSize = NSSize(width: 360, height: 430)
     popover.contentViewController = NSHostingController(
-      rootView: PopoverView(model: model, onSettings: onSettings, onQuit: onQuit)
+      rootView: PopoverView(
+        model: model,
+        dropPresentation: dropPresentation,
+        onSettings: onSettings,
+        onQuit: onQuit
+      )
     )
 
     configureButton()
+    configureDropPresentation()
     observeModel()
     updateButton()
   }
@@ -40,14 +61,20 @@ public final class StatusBarController {
     button.addSubview(dropView)
 
     dropView.onClick = { [weak self] in self?.togglePopover() }
-    dropView.onDragActiveChanged = { [weak self] active in
-      self?.model.isDragActive = active
-      self?.updateButton()
+    dropView.onTargetedChanged = { [weak self] active in
+      self?.dropPresentation.setTargeted(active, at: .statusItem)
     }
     dropView.onDropURLs = { [weak self] urls in
       guard let self else { return }
+      self.dropPresentation.completeDrop()
       Task { await self.model.handleDrop(urls) }
     }
+  }
+
+  private func configureDropPresentation() {
+    dropPresentation.onActivation = { [weak self] in self?.beginDragPresentation() }
+    dropPresentation.onCancellation = { [weak self] in self?.cancelDragPresentation() }
+    dropPresentation.onCompletion = { [weak self] in self?.completeDragPresentation() }
   }
 
   private func observeModel() {
@@ -68,13 +95,6 @@ public final class StatusBarController {
 
   private func updateButton() {
     guard let button = statusItem.button else { return }
-    if model.isDragActive {
-      statusItem.length = 142
-      button.image = nil
-      button.title = "Drop to convert"
-      return
-    }
-
     if !model.toolsAvailable || warningVisible {
       button.image = Self.systemImage("exclamationmark.triangle")
     } else if model.snapshot.isRunning {
@@ -82,13 +102,11 @@ public final class StatusBarController {
     } else {
       button.image = BrandGlyph.statusItemImage()
     }
-    if model.snapshot.unfinishedCount > 0 {
-      statusItem.length = NSStatusItem.variableLength
-      button.title = " \(model.snapshot.unfinishedCount)"
-    } else {
-      statusItem.length = NSStatusItem.squareLength
-      button.title = ""
-    }
+    let presentation = StatusItemTextPresentation.make(
+      unfinishedCount: model.snapshot.unfinishedCount
+    )
+    statusItem.length = presentation.length
+    button.title = presentation.title
   }
 
   private static func systemImage(_ name: String) -> NSImage? {
@@ -98,19 +116,38 @@ public final class StatusBarController {
   }
 
   private func togglePopover() {
-    guard let button = statusItem.button else { return }
     if popover.isShown {
       popover.performClose(nil)
     } else {
-      warningVisible = false
-      updateButton()
-      popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-      if let window = popover.contentViewController?.view.window {
-        window.makeKey()
-        // Drop the automatic first-responder focus so no footer button
-        // (Settings…) appears keyboard-focused when the popover opens.
-        window.makeFirstResponder(nil)
-      }
+      showPopover(makeKey: true)
     }
+  }
+
+  private func showPopover(makeKey: Bool) {
+    guard let button = statusItem.button else { return }
+    warningVisible = false
+    updateButton()
+    popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+    guard makeKey, let window = popover.contentViewController?.view.window else { return }
+    window.makeKey()
+    // Drop the automatic first-responder focus so no footer button
+    // (Settings…) appears keyboard-focused when the popover opens.
+    window.makeFirstResponder(nil)
+  }
+
+  private func beginDragPresentation() {
+    if dragPopoverSession.begin(popoverIsShown: popover.isShown) {
+      showPopover(makeKey: false)
+    }
+  }
+
+  private func cancelDragPresentation() {
+    if dragPopoverSession.cancel(), popover.isShown {
+      popover.performClose(nil)
+    }
+  }
+
+  private func completeDragPresentation() {
+    dragPopoverSession.complete()
   }
 }
