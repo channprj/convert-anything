@@ -1,6 +1,6 @@
 # Menu Bar Drop Panel Design
 
-- **Status:** Approved design; awaiting written-spec review
+- **Status:** Approved for implementation
 - **Date:** 2026-08-24
 - **Repository:** `channprj/convert-anything`
 - **Scope:** macOS status-item and popover drag feedback
