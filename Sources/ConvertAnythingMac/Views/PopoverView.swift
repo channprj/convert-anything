@@ -2,6 +2,8 @@ import ConvertAnythingCore
 import SwiftUI
 
 public struct PopoverView: View {
+  public static let dropTargetLabel = "Drop to convert"
+
   @ObservedObject private var model: AppViewModel
   @ObservedObject private var dropPresentation: DropPresentationCoordinator
   private let onSettings: @MainActor () -> Void
@@ -36,6 +38,13 @@ public struct PopoverView: View {
       return true
     } isTargeted: { active in
       dropPresentation.setTargeted(active, at: .popover)
+    }
+    .overlay {
+      if dropPresentation.isActive {
+        PopoverDropTreatment()
+          .allowsHitTesting(false)
+          .accessibilityHidden(true)
+      }
     }
   }
 
@@ -143,5 +152,26 @@ public struct PopoverView: View {
     case .succeeded: 3
     case .canceled: 4
     }
+  }
+}
+
+private struct PopoverDropTreatment: View {
+  var body: some View {
+    ZStack(alignment: .bottom) {
+      Color.accentColor.opacity(0.08)
+      RoundedRectangle(cornerRadius: 12, style: .continuous)
+        .strokeBorder(Color.accentColor, lineWidth: 3)
+      Label(PopoverView.dropTargetLabel, systemImage: "arrow.down.doc")
+        .font(.subheadline.weight(.semibold))
+        .foregroundStyle(Color.primary)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 8)
+        .background(.regularMaterial, in: Capsule())
+        .overlay {
+          Capsule().stroke(Color.accentColor.opacity(0.45))
+        }
+        .padding(.bottom, 54)
+    }
+    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
   }
 }
