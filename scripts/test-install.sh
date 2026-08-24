@@ -72,7 +72,7 @@ run_installer_case() {
         INSTALL_TEST_GH_LOG="$gh_log" \
         INSTALL_TEST_ARCHIVE="$archive" \
         "$@" \
-        /bin/zsh
+        /bin/bash
   )"
 
   test "$(wc -l < "$action_log" | tr -d ' ')" = 2
