@@ -125,6 +125,11 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
     guard validates(output: outputMedia, against: inputMedia, target: plan.rule.target) else {
       return failure(.invalidOutput, "The encoded media does not match the requested format")
     }
+    do {
+      try preservePOSIXPermissions(from: plan.input, on: plan.output.temporary)
+    } catch {
+      return failure(.finalizationFailed, "The output file permissions could not be secured")
+    }
     guard !fileManager.fileExists(atPath: plan.output.final.path) else {
       return failure(.finalizationFailed, "The selected output name became unavailable")
     }
@@ -176,6 +181,17 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
       return nil
     }
     return size.int64Value
+  }
+
+  private func preservePOSIXPermissions(from source: URL, on output: URL) throws {
+    let sourceAttributes = try fileManager.attributesOfItem(atPath: source.path)
+    guard let permissions = sourceAttributes[.posixPermissions] as? NSNumber else {
+      throw FilePermissionError.sourcePermissionsUnavailable
+    }
+    try fileManager.setAttributes(
+      [.posixPermissions: permissions],
+      ofItemAtPath: output.path
+    )
   }
 
   private func validates(
@@ -257,6 +273,10 @@ public final class ConversionService: ConversionServicing, @unchecked Sendable {
       || lowered.contains("error while decoding")
       || lowered.contains("could not find codec parameters")
   }
+}
+
+private enum FilePermissionError: Error {
+  case sourcePermissionsUnavailable
 }
 
 private actor CancellationRegistry {

@@ -28,6 +28,30 @@ let conversionServiceTests: [TestCase] = [
     try expectEqual(
       requests.map { $0.executable.lastPathComponent }, ["ffprobe", "ffmpeg", "ffprobe"])
   },
+  TestCase("success preserves restrictive source permissions on the output") {
+    let source = try fixtureFile(named: "private.wav", bytes: Data([1, 2, 3]))
+    defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
+    try FileManager.default.setAttributes(
+      [.posixPermissions: 0o600],
+      ofItemAtPath: source.path
+    )
+    let plan = try makePlan(for: source, target: .m4a)
+    let executor = FakeCommandExecutor.successfullyWriting(
+      Data([4, 5]),
+      to: plan.output.temporary,
+      postProbe: .aacM4A
+    )
+
+    let outcome = await makeService(executor: executor).convert(plan) { _ in }
+
+    try expectEqual(
+      outcome,
+      .succeeded(output: plan.output.final, outputByteCount: 2)
+    )
+    let attributes = try FileManager.default.attributesOfItem(atPath: plan.output.final.path)
+    let permissions = (attributes[.posixPermissions] as? NSNumber)?.intValue
+    try expectEqual(permissions, 0o600)
+  },
   TestCase("nonzero encoder exit removes temporary and does not finalize") {
     let source = try fixtureFile(named: "bad.mov", bytes: Data([1]))
     defer { try? FileManager.default.removeItem(at: source.deletingLastPathComponent()) }
