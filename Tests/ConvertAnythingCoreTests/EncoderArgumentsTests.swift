@@ -116,7 +116,8 @@ private let imageArgumentTests: [TestCase] = imageProfiles.flatMap { quality, cr
         EncoderArguments.make(plan: plan, media: .alphaImageFixture),
         commonInputArguments(plan)
           + [
-            "-filter_complex", "[0:v:0]split=2[color][alpha];[alpha]alphaextract[alphaout]",
+            "-filter_complex",
+            "[0:v:0]split=2[color][alpha];[alpha]alphaextract,setparams=colorspace=bt709[alphaout]",
             "-map", "[color]", "-map", "[alphaout]", "-frames:v", "1", "-c:v", "libaom-av1",
             "-crf", crf, "-still-picture", "1", "-metadata:s:v:1", "alpha_mode=1",
           ]

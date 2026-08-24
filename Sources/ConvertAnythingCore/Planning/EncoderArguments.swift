@@ -88,7 +88,7 @@ public enum EncoderArguments {
     if hasAlpha {
       arguments = [
         "-filter_complex",
-        "[0:v:0]split=2[color][alpha];[alpha]alphaextract[alphaout]",
+        "[0:v:0]split=2[color][alpha];[alpha]alphaextract,setparams=colorspace=bt709[alphaout]",
         "-map",
         "[color]",
         "-map",

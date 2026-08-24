@@ -88,6 +88,7 @@ common_ldflags="-arch arm64 -mmacosx-version-min=14.0"
     --prefix="$lame_prefix" \
     --disable-shared \
     --enable-static \
+    --disable-decoder \
     --disable-frontend \
     CFLAGS="$common_cflags" \
     LDFLAGS="$common_ldflags"
