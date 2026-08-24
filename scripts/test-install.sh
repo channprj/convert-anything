@@ -57,7 +57,8 @@ chmod +x "$shim_dir/curl" "$shim_dir/gh"
 
 run_installer_case() {
   local case_name="$1"
-  shift
+  local installer_shell="$2"
+  shift 2
 
   local action_log="$test_root/actions-$case_name.log"
   local curl_arguments_log="$test_root/curl-arguments-$case_name.log"
@@ -72,7 +73,7 @@ run_installer_case() {
         INSTALL_TEST_GH_LOG="$gh_log" \
         INSTALL_TEST_ARCHIVE="$archive" \
         "$@" \
-        /bin/bash
+        "$installer_shell"
   )"
 
   test "$(wc -l < "$action_log" | tr -d ' ')" = 2
@@ -93,9 +94,17 @@ run_installer_case() {
   fi
 }
 
-run_installer_case environment \
+run_installer_case system-environment /bin/bash \
   GH_TOKEN=INSTALLER_TEST_ENV_CREDENTIAL_SENTINEL \
   GITHUB_TOKEN=INSTALLER_TEST_FALLBACK_CREDENTIAL_SENTINEL
-run_installer_case cli
+run_installer_case system-cli /bin/bash
+
+path_bash="$(command -v bash)"
+if [[ "$path_bash" != /bin/bash ]]; then
+  run_installer_case path-environment "$path_bash" \
+    GH_TOKEN=INSTALLER_TEST_ENV_CREDENTIAL_SENTINEL \
+    GITHUB_TOKEN=INSTALLER_TEST_FALLBACK_CREDENTIAL_SENTINEL
+  run_installer_case path-cli "$path_bash"
+fi
 
 print "Curl installer test passed"

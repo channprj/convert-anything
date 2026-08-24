@@ -30,7 +30,7 @@ for required_command in "${required_commands[@]}"; do
   fi
 done
 
-if (( ${#missing_commands} > 0 )); then
+if (( ${#missing_commands[@]} > 0 )); then
   missing_list=""
   for missing_command in "${missing_commands[@]}"; do
     if [[ -n "$missing_list" ]]; then
