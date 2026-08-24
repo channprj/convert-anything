@@ -21,7 +21,7 @@ The application and bundled media tools are built for arm64 only.
 ### Install from the public source repository
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/channprj/convert-anything/main/install.sh | zsh
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/channprj/convert-anything/main/install.sh | bash
 ```
 
 The bootstrap installer validates the platform and required commands, downloads a clean repository archive, runs the pinned media-tool build, assembles the app, replaces `/Applications/Convert Anything.app`, verifies its signature, and launches it. Building FFmpeg and its codecs can take several minutes.
@@ -89,7 +89,7 @@ WebP inputs choose the safe output per file: a source with alpha becomes lossles
 | `zsh scripts/install.sh` | Build and replace `/Applications/Convert Anything.app`, verify it, and launch it. Requires the media toolchain to exist. |
 | `zsh scripts/make-appicon.sh` | Regenerate `App/AppIcon.icns` from the shared brand glyph after a glyph change. |
 | `zsh scripts/check.sh` | Run the complete formatting, installer, test, build, packaging, signature, and runtime acceptance gate. |
-| `swift run ConvertAnythingCoreTests` | Run the 76 core tests. |
+| `swift run ConvertAnythingCoreTests` | Run the 77 core tests. |
 | `swift run ConvertAnythingMacTests` | Run the 12 macOS adapter tests. |
 | `zsh scripts/integration-test.sh` | Generate fixtures and run the 10 real-media integration tests with the bundled tools. |
 | `zsh scripts/runtime-smoke.sh` | Launch the packaged app, perform four conversions, verify sources and output codecs, and quit normally. |
@@ -169,7 +169,7 @@ After building the media toolchain, quit any installed `ConvertAnything` process
 zsh scripts/check.sh
 ```
 
-The gate runs strict Swift formatting, the curl installer test, 76 core tests, 12 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
+The gate runs strict Swift formatting, the curl installer test, 77 core tests, 12 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
 
 The runtime smoke test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
 

@@ -1,10 +1,10 @@
 # Convert Anything
 
-Convert Anything is a native, Dock-less macOS menu bar utility for predictable local media conversion. Drop supported files onto its status item or popover and it writes efficient copies beside the untouched originals.
+Convert Anything is a small macOS menu bar app for local media conversion. Drop a supported file on its menu bar icon and it saves the converted copy next to the untouched original.
 
 [한국어](README.ko.md)
 
-This repository currently ships a local MVP build. It is not Developer ID signed, notarized, distributed publicly, or configured for automatic updates.
+This repository provides a source build. The app bundle is ad-hoc signed, not Developer ID signed or notarized, and not distributed as a trusted binary. Automatic updates are not included.
 
 ## Highlights
 
@@ -27,7 +27,7 @@ The generated app is arm64-only.
 Install from source into `/Applications`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/channprj/convert-anything/main/install.sh | zsh
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/channprj/convert-anything/main/install.sh | bash
 ```
 
 The installer downloads a clean source archive, builds the pinned media toolchain and app, ad-hoc signs the bundle, replaces `/Applications/Convert Anything.app`, and launches it. The initial media build can take several minutes.

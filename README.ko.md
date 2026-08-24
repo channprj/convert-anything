@@ -1,10 +1,10 @@
 # Convert Anything
 
-Convert Anything은 예측 가능한 로컬 미디어 변환을 위한 네이티브 Dock 없는 macOS 메뉴 막대 유틸리티입니다. 지원되는 파일을 상태 항목이나 팝오버에 놓으면 원본을 그대로 둔 채 효율적인 복사본을 같은 위치에 기록합니다.
+Convert Anything은 미디어 파일을 로컬에서 변환하는 작은 macOS 메뉴 막대 앱입니다. 파일을 메뉴 막대 아이콘에 놓으면 원본은 그대로 두고 변환본을 같은 폴더에 저장합니다.
 
 [English](README.md)
 
-이 저장소는 현재 로컬 MVP 빌드를 제공합니다. Developer ID로 서명되거나 notarize되지 않았고, 공개 배포 또는 자동 업데이트도 구성되어 있지 않습니다.
+이 저장소는 소스 빌드를 제공합니다. 앱 번들은 ad-hoc 서명만 되어 있으며 Developer ID 서명이나 notarization을 거치지 않았습니다. 신뢰할 수 있는 바이너리 배포와 자동 업데이트도 제공하지 않습니다.
 
 ## 주요 기능
 
@@ -27,7 +27,7 @@ Convert Anything은 예측 가능한 로컬 미디어 변환을 위한 네이티
 소스에서 빌드해 `/Applications`에 설치합니다.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/channprj/convert-anything/main/install.sh | zsh
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/channprj/convert-anything/main/install.sh | bash
 ```
 
 설치 프로그램은 깨끗한 소스 아카이브를 내려받고, 고정 버전 미디어 도구 체인과 앱을 빌드하고, 번들을 ad-hoc 서명한 뒤 `/Applications/Convert Anything.app`을 교체하고 실행합니다. 최초 미디어 빌드는 몇 분 걸릴 수 있습니다.
