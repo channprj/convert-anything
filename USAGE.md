@@ -77,8 +77,9 @@ The app processes one job at a time. Additional accepted drops join the current 
 | WebM | MP4/H.264 + AAC | Q 40, 64 kbps | Q 55, 96 kbps | Q 70, 128 kbps |
 | JPEG, JPG, PNG, TIFF | AVIF/AV1 | CRF 38 | CRF 30 | CRF 22 |
 | WebP | JPG or PNG | q 8 | q 5 | q 2 |
+| HEIC | JPG or PNG | q 8 | q 5 | q 2 |
 
-WebP inputs choose the safe output per file: a source with alpha becomes lossless PNG so transparency survives, while an opaque source becomes JPG. MP4 video uses the hardware VideoToolbox H.264 encoder.
+WebP and HEIC inputs choose the safe output per file: a source with alpha becomes lossless PNG so transparency survives, while an opaque source becomes JPG. MP4 video uses the hardware VideoToolbox H.264 encoder.
 
 ## Command reference
 
@@ -89,9 +90,9 @@ WebP inputs choose the safe output per file: a source with alpha becomes lossles
 | `zsh scripts/install.sh` | Build and replace `/Applications/Convert Anything.app`, verify it, and launch it. Requires the media toolchain to exist. |
 | `zsh scripts/make-appicon.sh` | Regenerate `App/AppIcon.icns` from the shared brand glyph after a glyph change. |
 | `zsh scripts/check.sh` | Run the complete formatting, installer, test, build, packaging, signature, and runtime acceptance gate. |
-| `swift run ConvertAnythingCoreTests` | Run the 77 core tests. |
-| `swift run ConvertAnythingMacTests` | Run the 12 macOS adapter tests. |
-| `zsh scripts/integration-test.sh` | Generate fixtures and run the 10 real-media integration tests with the bundled tools. |
+| `swift run ConvertAnythingCoreTests` | Run the 83 core tests. |
+| `swift run ConvertAnythingMacTests` | Run the 14 macOS adapter tests. |
+| `zsh scripts/integration-test.sh` | Generate fixtures and run the 12 real-media integration tests with the bundled tools. |
 | `zsh scripts/runtime-smoke.sh` | Launch the packaged app, perform four conversions, verify sources and output codecs, and quit normally. |
 | `zsh scripts/test-packaging.sh` | Verify bundle contents, source offer, codecs, architecture, dependencies, and code signature. |
 | `zsh scripts/test-install.sh` | Exercise the curl bootstrap installer against a local archive and check that CLI credentials are not forwarded. |
@@ -116,7 +117,7 @@ Use **Settings…** to add, edit, enable, disable, or remove rules. Each rule co
 
 Extensions are trimmed, lowercased, stripped of leading dots, and deduplicated within a rule. Every rule must retain at least one extension, and the same extension cannot belong to multiple enabled rules. Raw FFmpeg arguments are never accepted.
 
-Use **Restore Defaults** to replace the current draft with the six built-in rules.
+Use **Restore Defaults** to replace the current draft with the seven built-in rules.
 
 ### Settings storage
 
@@ -126,7 +127,7 @@ Settings are stored as schema-versioned JSON at:
 ~/Library/Application Support/com.channprj.convert-anything/settings.json
 ```
 
-`MappingStore` writes this file atomically and migrates supported older schemas. The current schema version is 2. Use the Settings window instead of hand-editing the JSON so validation remains intact.
+`MappingStore` writes this file atomically and migrates supported older schemas. The current schema version is 3. Use the Settings window instead of hand-editing the JSON so validation remains intact.
 
 Job history is not persisted across app launches.
 
@@ -153,9 +154,9 @@ sample-converted-3.m4a
 
 Encoding uses a unique hidden sibling temporary file. The selected final path appears only after the output has been validated, and the source remains untouched.
 
-### Preserve WebP transparency
+### Preserve WebP and HEIC transparency
 
-Drop an alpha-bearing `image.webp` to create `image.png`. Drop an opaque `photo.webp` to create `photo.jpg`. The decision is based on probed media content rather than the filename alone.
+Drop an alpha-bearing `image.webp` or `image.heic` to create `image.png`. Drop an opaque `photo.webp` or `photo.heic` to create `photo.jpg`. The decision is based on probed media content rather than the filename alone.
 
 ### Reverse a default route
 
@@ -169,7 +170,7 @@ After building the media toolchain, quit any installed `ConvertAnything` process
 zsh scripts/check.sh
 ```
 
-The gate runs strict Swift formatting, the curl installer test, 77 core tests, 12 macOS adapter tests, 10 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
+The gate runs strict Swift formatting, the curl installer test, 83 core tests, 14 macOS adapter tests, 12 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
 
 The runtime smoke test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
 
@@ -182,7 +183,7 @@ The repository uses executable Swift test harnesses because the available Comman
 - **There is not enough disk space:** free capacity on the source volume. Preflight reserves a conservative output estimate plus a 64 MiB temporary-file margin.
 - **No notification appears:** allow Convert Anything in System Settings → Notifications. Conversion results remain available in the popover when permission is denied.
 - **The full check reports an existing process:** quit the installed app before running `zsh scripts/check.sh`; the runtime smoke test must prove that it launched exactly one process.
-- **Settings cannot be loaded:** restore a compatible schema-version 2 settings file or move the invalid file aside and relaunch so defaults can be created.
+- **Settings cannot be loaded:** restore a compatible schema-version 3 settings file or move the invalid file aside and relaunch so defaults can be created.
 - **The app cannot be distributed to another Mac as a trusted download:** the current bundle is locally ad-hoc signed and not notarized. Developer ID signing and public release packaging are outside this MVP.
 
 ## Current limitations

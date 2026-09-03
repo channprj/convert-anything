@@ -8,7 +8,7 @@ This repository provides a source build. The app bundle is ad-hoc signed, not De
 
 ## Highlights
 
-- Converts six default routes: lossless audio to M4A, M4A to MP3, common video to WebM, WebM to MP4, common images to AVIF, and WebP to JPG or PNG.
+- Converts seven default routes: lossless audio to M4A, M4A to MP3, common video to WebM, WebM to MP4, common images to AVIF, WebP to JPG or PNG, and HEIC to JPG or PNG.
 - Preserves every source and publishes an output only after probing, encoding to a hidden temporary file, and validating the result.
 - Processes one job at a time with visible progress, cancellation, retry, Finder reveal actions, and a queue-drain summary.
 - Runs locally with bundled, pinned FFmpeg tools and no account, cloud upload, analytics, telemetry, database, or runtime network feature.
