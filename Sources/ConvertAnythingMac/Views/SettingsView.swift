@@ -4,9 +4,11 @@ import SwiftUI
 public struct SettingsView: View {
   @ObservedObject private var model: AppViewModel
   @State private var draftRules: [ConversionRule] = []
+  private let onSaveSuccess: @MainActor () -> Void
 
-  public init(model: AppViewModel) {
+  public init(model: AppViewModel, onSaveSuccess: @escaping @MainActor () -> Void = {}) {
     self.model = model
+    self.onSaveSuccess = onSaveSuccess
   }
 
   public var body: some View {
@@ -42,7 +44,11 @@ public struct SettingsView: View {
         Spacer()
         Button("Save") {
           let proposal = draftRules
-          Task { await model.saveRules(proposal) }
+          Task {
+            if await model.saveRules(proposal) {
+              onSaveSuccess()
+            }
+          }
         }
         .keyboardShortcut(.defaultAction)
       }

@@ -156,23 +156,26 @@ public final class AppViewModel: ObservableObject {
     dependencies.finder.reveal(url)
   }
 
-  public func saveRules(_ proposedRules: [ConversionRule]) async {
+  @discardableResult
+  public func saveRules(_ proposedRules: [ConversionRule]) async -> Bool {
     do {
       let validated = try RuleValidator.validate(proposedRules)
       let document = SettingsDocument(rules: validated)
       try await dependencies.settings.save(document)
       rules = validated
       settingsError = nil
+      return true
     } catch {
       settingsError = Self.settingsMessage(error)
       if let document = try? await dependencies.settings.load() {
         rules = document.rules
       }
+      return false
     }
   }
 
   public func restoreDefaultRules() async {
-    await saveRules(RuleCatalog.defaultRules)
+    _ = await saveRules(RuleCatalog.defaultRules)
   }
 
   private func loadSettingsIfNeeded() async {

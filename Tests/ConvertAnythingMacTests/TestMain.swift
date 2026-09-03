@@ -6,6 +6,7 @@ struct MacTestMain {
     await runTests(
       dropPresentationCoordinatorTests + statusBarDropViewTests + appViewModelTests
         + localNotificationServiceTests + popoverViewTests + brandGlyphTests
+        + settingsWindowControllerTests
     )
   }
 }
