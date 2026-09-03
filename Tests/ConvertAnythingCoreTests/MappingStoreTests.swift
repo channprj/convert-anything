@@ -13,7 +13,7 @@ let mappingStoreTests: [TestCase] = [
 
     try expectEqual(
       document,
-      SettingsDocument(schemaVersion: 2, rules: RuleCatalog.defaultRules)
+      SettingsDocument(schemaVersion: 3, rules: RuleCatalog.defaultRules)
     )
     try expectTrue(FileManager.default.fileExists(atPath: url.path))
     let persisted = try JSONDecoder().decode(SettingsDocument.self, from: Data(contentsOf: url))
@@ -64,7 +64,7 @@ let mappingStoreTests: [TestCase] = [
     let firstBytes = try Data(contentsOf: url)
     let secondLoad = try await store.load()
 
-    try expectEqual(firstLoad.schemaVersion, 2)
+    try expectEqual(firstLoad.schemaVersion, 3)
     try expectEqual(firstLoad.rules, rules)
     try expectEqual(secondLoad, firstLoad)
     try expectEqual(try Data(contentsOf: url), firstBytes)
@@ -93,26 +93,75 @@ let mappingStoreTests: [TestCase] = [
     let firstBytes = try Data(contentsOf: url)
     let secondLoad = try await store.load()
 
-    try expectEqual(firstLoad.schemaVersion, 2)
-    try expectEqual(firstLoad.rules.count, 6)
+    try expectEqual(firstLoad.schemaVersion, 3)
+    try expectEqual(firstLoad.rules.count, 7)
     try expectEqual(firstLoad.rules[2].sourceExtensions, ["jpeg", "jpg", "png", "tiff"])
     try expectEqual(
       firstLoad.rules[3...].map(\.id),
-      [RuleCatalog.mp3AudioRuleID, RuleCatalog.mp4VideoRuleID, RuleCatalog.webpImageRuleID]
+      [
+        RuleCatalog.mp3AudioRuleID, RuleCatalog.mp4VideoRuleID, RuleCatalog.webpImageRuleID,
+        RuleCatalog.heicImageRuleID,
+      ]
+    )
+    try expectEqual(firstLoad.rules[6].sourceExtensions, ["heic"])
+    try expectEqual(firstLoad.rules[6].target, .jpegOrPng)
+    try expectEqual(secondLoad, firstLoad)
+    try expectEqual(try Data(contentsOf: url), firstBytes)
+  },
+  TestCase("schema two gains the HEIC default once") {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("settings.json")
+    let legacyRules = RuleCatalog.defaultRules.filter { $0.id != RuleCatalog.heicImageRuleID }
+    let legacy = SettingsDocument(schemaVersion: 2, rules: legacyRules)
+    try JSONEncoder().encode(legacy).write(to: url)
+    let store = MappingStore(fileURL: url)
+
+    let firstLoad = try await store.load()
+    let firstBytes = try Data(contentsOf: url)
+    let secondLoad = try await store.load()
+
+    try expectEqual(firstLoad.schemaVersion, 3)
+    try expectEqual(
+      firstLoad.rules.filter { $0.sourceExtensions.contains("heic") }.map(\.target),
+      [.jpegOrPng]
     )
     try expectEqual(secondLoad, firstLoad)
     try expectEqual(try Data(contentsOf: url), firstBytes)
+  },
+  TestCase("schema two preserves an existing HEIC rule") {
+    let directory = try temporaryDirectory()
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("settings.json")
+    let customHEICRule = ConversionRule(
+      id: UUID(uuidString: "00000000-0000-0000-0000-000000000099")!,
+      family: .image,
+      sourceExtensions: [".HEIC"],
+      target: .avif,
+      quality: .higherQuality,
+      isEnabled: true
+    )
+    let legacy = SettingsDocument(schemaVersion: 2, rules: [customHEICRule])
+    try JSONEncoder().encode(legacy).write(to: url)
+    let store = MappingStore(fileURL: url)
+
+    let migrated = try await store.load()
+
+    var normalizedRule = customHEICRule
+    normalizedRule.sourceExtensions = ["heic"]
+    try expectEqual(migrated.schemaVersion, 3)
+    try expectEqual(migrated.rules, [normalizedRule])
   },
   TestCase("future settings schema is rejected without rewriting bytes") {
     let directory = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
     let url = directory.appendingPathComponent("settings.json")
-    let future = SettingsDocument(schemaVersion: 3, rules: RuleCatalog.defaultRules)
+    let future = SettingsDocument(schemaVersion: 4, rules: RuleCatalog.defaultRules)
     let bytes = try JSONEncoder().encode(future)
     try bytes.write(to: url)
     let store = MappingStore(fileURL: url)
 
-    try await expectThrows(RuleValidationError.unsupportedSchemaVersion(3)) {
+    try await expectThrows(RuleValidationError.unsupportedSchemaVersion(4)) {
       _ = try await store.load()
     }
 

@@ -6,7 +6,7 @@ let ruleCatalogTests: [TestCase] = [
   TestCase("default rules match approved balanced profiles") {
     let rules = RuleCatalog.defaultRules
 
-    try expectEqual(rules.count, 6)
+    try expectEqual(rules.count, 7)
     try expectEqual(rules.map(\.id).count, Set(rules.map(\.id)).count)
     for rule in rules {
       try expectEqual(rule.quality, .balanced)
@@ -42,6 +42,11 @@ let ruleCatalogTests: [TestCase] = [
     try expectEqual(rules[5].family, .image)
     try expectEqual(rules[5].sourceExtensions, ["webp"])
     try expectEqual(rules[5].target, .jpegOrPng)
+
+    try expectEqual(rules[6].family, .image)
+    try expectEqual(rules[6].id, RuleCatalog.heicImageRuleID)
+    try expectEqual(rules[6].sourceExtensions, ["heic"])
+    try expectEqual(rules[6].target, .jpegOrPng)
 
     try expectEqual(try RuleValidator.validate(rules), rules)
   },

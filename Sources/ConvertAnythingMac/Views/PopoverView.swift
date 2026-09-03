@@ -75,7 +75,7 @@ public struct PopoverView: View {
           .foregroundStyle(model.toolsAvailable ? Color.accentColor : .orange)
         Text(model.toolsAvailable ? "Drop media here" : "Bundled tools are missing")
           .font(.subheadline.weight(.medium))
-        Text("WAV, AIFF, FLAC, CAF, M4A, MOV, MP4, MKV, WebM, JPEG, PNG, WebP, or TIFF")
+        Text("WAV, AIFF, FLAC, CAF, M4A, MOV, MP4, MKV, WebM, JPEG, PNG, WebP, HEIC, or TIFF")
           .font(.caption)
           .foregroundStyle(.secondary)
           .multilineTextAlignment(.center)

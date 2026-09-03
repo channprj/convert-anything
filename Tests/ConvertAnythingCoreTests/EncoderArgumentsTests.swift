@@ -4,7 +4,7 @@ import Foundation
 
 let encoderArgumentsTests: [TestCase] =
   audioArgumentTests + mp3ArgumentTests + videoArgumentTests + mp4ArgumentTests
-  + imageArgumentTests + webpArgumentTests
+  + imageArgumentTests + webpArgumentTests + heicArgumentTests
 
 private let audioProfiles: [(QualityPreset, String)] = [
   (.smaller, "96k"),
@@ -159,6 +159,23 @@ private let webpArgumentTests: [TestCase] =
       )
     }
   ]
+
+private let heicArgumentTests: [TestCase] = [
+  TestCase("alpha HEIC arguments merge its auxiliary alpha stream into PNG") {
+    let plan = try makePlan(source: "overlay.heic", target: .jpegOrPng, quality: .balanced)
+    defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+
+    try expectEqual(
+      EncoderArguments.make(plan: plan, media: .alphaHEIC),
+      commonInputArguments(plan)
+        + [
+          "-filter_complex", "[0:v:0][0:v:2]alphamerge[out]", "-map", "[out]", "-frames:v",
+          "1", "-c:v", "png",
+        ]
+        + outputArguments(plan)
+    )
+  }
+]
 
 private func commonInputArguments(_ plan: ConversionPlan) -> [String] {
   ["-nostdin", "-hide_banner", "-loglevel", "error", "-n", "-i", plan.input.path]

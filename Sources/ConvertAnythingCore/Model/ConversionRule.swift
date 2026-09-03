@@ -26,7 +26,7 @@ public struct ConversionRule: Identifiable, Codable, Equatable, Sendable {
 }
 
 public struct SettingsDocument: Codable, Equatable, Sendable {
-  public static let currentSchemaVersion = 2
+  public static let currentSchemaVersion = 3
 
   public var schemaVersion: Int
   public var rules: [ConversionRule]
@@ -74,7 +74,7 @@ public enum RuleValidator {
     return validated
   }
 
-  private static func normalize(_ sourceExtensions: [String]) -> [String] {
+  static func normalize(_ sourceExtensions: [String]) -> [String] {
     var seen = Set<String>()
     var normalized: [String] = []
 

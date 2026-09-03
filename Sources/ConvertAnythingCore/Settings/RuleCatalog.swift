@@ -7,6 +7,16 @@ public enum RuleCatalog {
   public static let mp3AudioRuleID = UUID(uuidString: "00000000-0000-0000-0000-000000000004")!
   public static let mp4VideoRuleID = UUID(uuidString: "00000000-0000-0000-0000-000000000005")!
   public static let webpImageRuleID = UUID(uuidString: "00000000-0000-0000-0000-000000000006")!
+  public static let heicImageRuleID = UUID(uuidString: "00000000-0000-0000-0000-000000000007")!
+
+  private static let heicRule = ConversionRule(
+    id: heicImageRuleID,
+    family: .image,
+    sourceExtensions: ["heic"],
+    target: .jpegOrPng,
+    quality: .balanced,
+    isEnabled: true
+  )
 
   public static let defaultRules: [ConversionRule] = [
     ConversionRule(
@@ -57,6 +67,7 @@ public enum RuleCatalog {
       quality: .balanced,
       isEnabled: true
     ),
+    heicRule,
   ]
 
   public static func targets(for family: MediaFamily) -> [TargetFormat] {
@@ -78,6 +89,19 @@ public enum RuleCatalog {
     where reverseRuleIDs.contains(rule.id) && claimed.isDisjoint(with: rule.sourceExtensions) {
       migrated.append(rule)
     }
+    return migrated
+  }
+
+  /// Schema 2 → 3 migration: add the HEIC default when no enabled rule
+  /// already owns the extension.
+  public static func addingHEICRule(to rules: [ConversionRule]) -> [ConversionRule] {
+    let claimed = Set(
+      RuleValidator.normalize(rules.filter(\.isEnabled).flatMap(\.sourceExtensions))
+    )
+    guard !claimed.contains("heic") else { return rules }
+
+    var migrated = rules
+    migrated.append(heicRule)
     return migrated
   }
 }

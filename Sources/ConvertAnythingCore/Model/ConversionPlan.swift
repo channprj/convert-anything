@@ -65,6 +65,7 @@ public struct InputMediaInfo: Equatable, Sendable {
   public let channelCount: Int?
   public let hasAlpha: Bool
   public let rotationDegrees: Int?
+  public let auxiliaryAlphaVideoStreamIndex: Int?
 
   public init(
     containerNames: [String],
@@ -75,7 +76,8 @@ public struct InputMediaInfo: Equatable, Sendable {
     height: Int?,
     channelCount: Int?,
     hasAlpha: Bool,
-    rotationDegrees: Int?
+    rotationDegrees: Int?,
+    auxiliaryAlphaVideoStreamIndex: Int? = nil
   ) {
     self.containerNames = containerNames
     self.durationSeconds = durationSeconds
@@ -86,6 +88,7 @@ public struct InputMediaInfo: Equatable, Sendable {
     self.channelCount = channelCount
     self.hasAlpha = hasAlpha
     self.rotationDegrees = rotationDegrees
+    self.auxiliaryAlphaVideoStreamIndex = auxiliaryAlphaVideoStreamIndex
   }
 }
 

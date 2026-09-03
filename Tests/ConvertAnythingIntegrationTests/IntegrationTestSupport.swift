@@ -45,6 +45,24 @@ struct IntegrationEnvironment: Sendable {
     try await FFprobeClient(executable: ffprobe, executor: FoundationCommandExecutor())
       .probe(url, commandID: UUID())
   }
+
+  func decodedAlphaPlane(from url: URL, streamIndex: Int? = nil) async throws -> Data {
+    var arguments = ["-nostdin", "-hide_banner", "-loglevel", "error", "-i", url.path]
+    if let streamIndex {
+      arguments += ["-map", "0:v:\(streamIndex)"]
+    } else {
+      arguments += ["-vf", "alphaextract"]
+    }
+    arguments += ["-frames:v", "1", "-pix_fmt", "gray", "-f", "rawvideo", "pipe:1"]
+
+    let result = try await FoundationCommandExecutor().execute(
+      CommandRequest(id: UUID(), executable: ffmpeg, arguments: arguments)
+    ) { _ in }
+    guard result.terminationStatus == 0 else {
+      throw TestFailure(description: "Could not decode alpha plane from \(url.lastPathComponent)")
+    }
+    return result.standardOutput
+  }
 }
 
 func integrationPlan(for input: URL, target: TargetFormat) throws -> ConversionPlan {
@@ -64,6 +82,19 @@ func integrationPlan(for input: URL, target: TargetFormat) throws -> ConversionP
     rule: rule,
     sourceByteCount: Int64(try Data(contentsOf: input).count)
   )
+}
+
+func defaultRule(for sourceExtension: String) throws -> ConversionRule {
+  guard
+    let rule = RuleCatalog.defaultRules.first(where: {
+      $0.isEnabled && $0.sourceExtensions.contains(sourceExtension)
+    })
+  else {
+    throw TestFailure(
+      description: "\(sourceExtension.uppercased()) has no enabled default conversion rule"
+    )
+  }
+  return rule
 }
 
 func successfulOutput(from outcome: ConversionOutcome) throws -> URL {

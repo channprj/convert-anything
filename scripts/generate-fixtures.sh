@@ -26,6 +26,10 @@ common=(-nostdin -hide_banner -loglevel error -y)
   -frames:v 1 "$fixture_dir/opaque.png"
 "$ffmpeg" "${common[@]}" -f lavfi -i 'color=c=red@0.4:s=96x64:d=1,format=rgba' \
   -frames:v 1 "$fixture_dir/alpha.png"
+/usr/bin/sips -s format heic "$fixture_dir/opaque.png" \
+  --out "$fixture_dir/opaque.heic" >/dev/null
+/usr/bin/sips -s format heic "$fixture_dir/alpha.png" \
+  --out "$fixture_dir/alpha.heic" >/dev/null
 "$ffmpeg" "${common[@]}" -f lavfi -i 'testsrc2=size=640x360:rate=60:duration=20' \
   -c:v mpeg4 -q:v 5 -an "$fixture_dir/long.mov"
 "$ffmpeg" "${common[@]}" -f lavfi -i 'sine=frequency=330:duration=1' \
@@ -37,6 +41,6 @@ cp "$repo_root/Tests/Fixtures/opaque.webp" "$repo_root/Tests/Fixtures/alpha.webp
 (
   cd "$fixture_dir"
   shasum -a 256 voice.wav movie.mov opaque.png alpha.png long.mov \
-    speech.m4a clip.webm opaque.webp alpha.webp > sources.sha256
+    speech.m4a clip.webm opaque.webp alpha.webp opaque.heic alpha.heic > sources.sha256
 )
 print "Generated deterministic fixtures: $fixture_dir"

@@ -44,13 +44,28 @@ public struct FFprobeClient: Sendable {
     {
       containerNames.append("avif")
     }
+    let heicBrands = ["heic", "heix", "hevc", "hevx"]
+    let isHEIC =
+      majorBrand.map(heicBrands.contains) ?? false
+      || heicBrands.contains(where: compatibleBrands.contains)
+    if !containerNames.contains("heic") && isHEIC {
+      containerNames.append("heic")
+    }
     let videoStreams = response.streams.filter { $0.codecType == "video" }
     let video = videoStreams.first
     let audio = response.streams.first { $0.codecType == "audio" }
     let pixelFormat = video?.pixelFormat?.lowercased() ?? ""
     let formatsWithAlpha = ["rgba", "bgra", "argb", "abgr"]
     let hasPixelAlpha = formatsWithAlpha.contains(pixelFormat) || pixelFormat.contains("yuva")
-    let hasAuxiliaryAlpha = containerNames.contains("avif") && videoStreams.count > 1
+    let isHEIFImage = containerNames.contains("avif") || containerNames.contains("heic")
+    let auxiliaryAlphaVideoStreamIndex =
+      isHEIFImage
+      ? videoStreams.enumerated().dropFirst().first { _, stream in
+        let auxiliaryPixelFormat = stream.pixelFormat?.lowercased() ?? ""
+        return auxiliaryPixelFormat.hasPrefix("gray")
+          && stream.width == video?.width
+          && stream.height == video?.height
+      }?.offset : nil
     let rotation =
       video?.sideData?.compactMap(\.rotation).first
       ?? video?.tags?["rotate"].flatMap(Int.init)
@@ -63,8 +78,9 @@ public struct FFprobeClient: Sendable {
       width: video?.width,
       height: video?.height,
       channelCount: audio?.channels,
-      hasAlpha: hasPixelAlpha || hasAuxiliaryAlpha,
-      rotationDegrees: rotation
+      hasAlpha: hasPixelAlpha || auxiliaryAlphaVideoStreamIndex != nil,
+      rotationDegrees: rotation,
+      auxiliaryAlphaVideoStreamIndex: auxiliaryAlphaVideoStreamIndex
     )
   }
 }

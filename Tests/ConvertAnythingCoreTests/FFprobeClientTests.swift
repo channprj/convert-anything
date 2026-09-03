@@ -35,7 +35,7 @@ let ffprobeClientTests: [TestCase] = [
   },
   TestCase("probe recognizes AVIF auxiliary alpha and rotation metadata") {
     let executor = FakeCommandExecutor.probeJSON(
-      #"{"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","tags":{"major_brand":"avif","compatible_brands":"avifmif1miafMA1A"}},"streams":[{"codec_type":"video","codec_name":"av1","pix_fmt":"yuv420p","width":96,"height":64,"side_data_list":[{"rotation":90}]},{"codec_type":"video","codec_name":"av1","pix_fmt":"gray"}]}"#
+      #"{"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","tags":{"major_brand":"avif","compatible_brands":"avifmif1miafMA1A"}},"streams":[{"codec_type":"video","codec_name":"av1","pix_fmt":"yuv420p","width":96,"height":64,"side_data_list":[{"rotation":90}]},{"codec_type":"video","codec_name":"av1","pix_fmt":"gray","width":96,"height":64}]}"#
     )
     let client = FFprobeClient(
       executable: URL(fileURLWithPath: "/tools/ffprobe"),
@@ -47,6 +47,52 @@ let ffprobeClientTests: [TestCase] = [
     try expectTrue(info.hasAlpha)
     try expectTrue(info.containerNames.contains("avif"))
     try expectEqual(info.rotationDegrees, 90)
+  },
+  TestCase("probe recognizes HEIC auxiliary alpha") {
+    let executor = FakeCommandExecutor.probeJSON(
+      #"{"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","tags":{"major_brand":"mif1","compatible_brands":"mif1heicmiaf"}},"streams":[{"codec_type":"video","codec_name":"hevc","pix_fmt":"yuv420p","width":96,"height":64},{"codec_type":"video","codec_name":"hevc","pix_fmt":"gray","width":96,"height":64}]}"#
+    )
+    let client = FFprobeClient(
+      executable: URL(fileURLWithPath: "/tools/ffprobe"),
+      executor: executor
+    )
+
+    let info = try await client.probe(URL(fileURLWithPath: "/tmp/alpha.heic"), commandID: UUID())
+
+    try expectTrue(info.hasAlpha)
+    try expectEqual(info.auxiliaryAlphaVideoStreamIndex, 1)
+    try expectTrue(info.containerNames.contains("heic"))
+  },
+  TestCase("probe identifies the exact HEIC auxiliary alpha stream") {
+    let executor = FakeCommandExecutor.probeJSON(
+      #"{"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","tags":{"major_brand":"heic","compatible_brands":"mif1heicmiaf"}},"streams":[{"codec_type":"video","codec_name":"hevc","pix_fmt":"yuv420p","width":96,"height":64},{"codec_type":"video","codec_name":"hevc","pix_fmt":"yuv420p","width":48,"height":32},{"codec_type":"video","codec_name":"hevc","pix_fmt":"gray","width":96,"height":64}]}"#
+    )
+    let client = FFprobeClient(
+      executable: URL(fileURLWithPath: "/tools/ffprobe"),
+      executor: executor
+    )
+
+    let info = try await client.probe(
+      URL(fileURLWithPath: "/tmp/alpha-with-thumbnail.heic"), commandID: UUID())
+
+    try expectTrue(info.hasAlpha)
+    try expectEqual(info.auxiliaryAlphaVideoStreamIndex, 2)
+  },
+  TestCase("probe does not mistake a multi-image HEIC collection for alpha") {
+    let executor = FakeCommandExecutor.probeJSON(
+      #"{"format":{"format_name":"mov,mp4,m4a,3gp,3g2,mj2","tags":{"major_brand":"heic","compatible_brands":"mif1heicmiaf"}},"streams":[{"codec_type":"video","codec_name":"hevc","pix_fmt":"yuv420p","width":96,"height":64},{"codec_type":"video","codec_name":"hevc","pix_fmt":"yuv420p","width":96,"height":64}]}"#
+    )
+    let client = FFprobeClient(
+      executable: URL(fileURLWithPath: "/tools/ffprobe"),
+      executor: executor
+    )
+
+    let info = try await client.probe(
+      URL(fileURLWithPath: "/tmp/collection.heic"), commandID: UUID())
+
+    try expectTrue(!info.hasAlpha)
+    try expectEqual(info.auxiliaryAlphaVideoStreamIndex, nil)
+    try expectTrue(info.containerNames.contains("heic"))
   },
   TestCase("probe rejects malformed JSON rather than inventing defaults") {
     let client = FFprobeClient(

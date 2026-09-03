@@ -121,6 +121,19 @@ extension InputMediaInfo {
     rotationDegrees: nil
   )
 
+  static let alphaHEIC = InputMediaInfo(
+    containerNames: ["mov", "mp4", "heic"],
+    durationSeconds: nil,
+    videoCodec: "hevc",
+    audioCodec: nil,
+    width: 96,
+    height: 64,
+    channelCount: nil,
+    hasAlpha: true,
+    rotationDegrees: nil,
+    auxiliaryAlphaVideoStreamIndex: 2
+  )
+
   /// Output-side twins of the input fixtures; aliases keep call sites
   /// intent-revealing while guaranteeing the data cannot drift apart.
   static let jpegOutput = opaqueImageFixture

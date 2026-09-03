@@ -157,6 +157,51 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [], "png temporary files"
       )
     },
+    TestCase("real HEIC default conversion produces JPEG") {
+      let input = try environment.workingCopy(of: "opaque.heic")
+      let originalHash = try sha256(input)
+      let rule = try defaultRule(for: "heic")
+      let plan = try await ConversionPlanner().plan(input: input, rule: rule, jobID: UUID())
+
+      let output = try successfulOutput(
+        from: await environment.service().convert(plan) { _ in }
+      )
+      let media = try await environment.probe(output)
+      try expectEqual(output.pathExtension, "jpg", "HEIC JPEG extension")
+      try expectEqual(media.videoCodec, "mjpeg", "HEIC JPEG codec")
+      try expectEqual(media.width, 96, "HEIC JPEG width")
+      try expectEqual(media.height, 64, "HEIC JPEG height")
+      try expectTrue(!media.hasAlpha, "Opaque HEIC must produce an opaque JPEG")
+      try expectEqual(try sha256(input), originalHash, "HEIC source hash")
+      try expectEqual(
+        try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [],
+        "HEIC temporary files"
+      )
+    },
+    TestCase("real alpha HEIC default conversion produces PNG with alpha") {
+      let input = try environment.workingCopy(of: "alpha.heic")
+      let originalHash = try sha256(input)
+      let rule = try defaultRule(for: "heic")
+      let plan = try await ConversionPlanner().plan(input: input, rule: rule, jobID: UUID())
+
+      let output = try successfulOutput(
+        from: await environment.service().convert(plan) { _ in }
+      )
+      let media = try await environment.probe(output)
+      try expectEqual(output.pathExtension, "png", "HEIC PNG extension")
+      try expectEqual(media.videoCodec, "png", "HEIC PNG codec")
+      try expectEqual(media.width, 96, "HEIC PNG width")
+      try expectEqual(media.height, 64, "HEIC PNG height")
+      try expectTrue(media.hasAlpha, "Alpha HEIC must keep alpha in PNG")
+      let outputAlpha = try await environment.decodedAlphaPlane(from: output)
+      let inputAlpha = try await environment.decodedAlphaPlane(from: input, streamIndex: 1)
+      try expectEqual(outputAlpha, inputAlpha, "HEIC PNG alpha pixels")
+      try expectEqual(try sha256(input), originalHash, "alpha HEIC source hash")
+      try expectEqual(
+        try hiddenTemporaryFiles(in: input.deletingLastPathComponent()), [],
+        "alpha HEIC temporary files"
+      )
+    },
     TestCase("corrupt media leaves no final or temporary artifact") {
       let directory = environment.fixtureDirectory
         .appendingPathComponent("test-runs", isDirectory: true)

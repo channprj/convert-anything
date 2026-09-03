@@ -22,7 +22,13 @@ public enum EncoderArguments {
     case .avif:
       arguments += imageArguments(quality: plan.rule.quality, hasAlpha: media.hasAlpha)
     case .jpegOrPng:
-      arguments += media.hasAlpha ? pngArguments() : jpegArguments(quality: plan.rule.quality)
+      if media.containerNames.contains("heic"),
+        let alphaStreamIndex = media.auxiliaryAlphaVideoStreamIndex
+      {
+        arguments += heicPNGArguments(alphaStreamIndex: alphaStreamIndex)
+      } else {
+        arguments += media.hasAlpha ? pngArguments() : jpegArguments(quality: plan.rule.quality)
+      }
     }
 
     arguments += ["-progress", "pipe:1", plan.output.temporary.path]
@@ -60,6 +66,13 @@ public enum EncoderArguments {
 
   private static func pngArguments() -> [String] {
     ["-map", "0:v:0", "-frames:v", "1", "-c:v", "png"]
+  }
+
+  private static func heicPNGArguments(alphaStreamIndex: Int) -> [String] {
+    [
+      "-filter_complex", "[0:v:0][0:v:\(alphaStreamIndex)]alphamerge[out]", "-map", "[out]",
+      "-frames:v", "1", "-c:v", "png",
+    ]
   }
 
   private static func videoArguments(quality: QualityPreset) -> [String] {

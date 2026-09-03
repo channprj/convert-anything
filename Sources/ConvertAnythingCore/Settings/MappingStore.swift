@@ -58,6 +58,10 @@ public actor MappingStore: SettingsServing {
       migrated.rules = RuleCatalog.addingReverseRules(to: migrated.rules)
       migrated.schemaVersion = 2
     }
+    if migrated.schemaVersion == 2 {
+      migrated.rules = RuleCatalog.addingHEICRule(to: migrated.rules)
+      migrated.schemaVersion = 3
+    }
     return migrated
   }
 
