@@ -17,6 +17,7 @@ test -x "$tool_dir/ffprobe"
 
 cd "$repo_root"
 swift build -c release --product ConvertAnythingApp
+zsh "$repo_root/scripts/headver.sh" apply
 
 rm -rf -- "$app_bundle"
 mkdir -p "$app_bundle/Contents/MacOS" "$app_bundle/Contents/Resources"

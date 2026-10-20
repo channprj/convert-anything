@@ -1,0 +1,29 @@
+#!/bin/zsh
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+if ! git diff-tree --no-commit-id --name-only -r HEAD | grep -qx 'VERSION'; then
+  exit 0
+fi
+
+version="$(git show 'HEAD:VERSION' | tr -d '[:space:]')"
+if [[ ! "$version" =~ '^[0-9]+\.[0-9]{4}\.[0-9]+$' ]]; then
+  print -u2 "VERSION is not a headver (${version}); not tagging"
+  exit 0
+fi
+
+tag="v${version}"
+if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+  existing="$(git rev-parse "${tag}^{}")"
+  head_commit="$(git rev-parse HEAD)"
+  if [[ "$existing" != "$head_commit" ]]; then
+    print -u2 "Tag ${tag} already points at ${existing}, not ${head_commit}"
+    exit 1
+  fi
+  exit 0
+fi
+
+git tag -a "$tag" -m "$tag"
+print "Created tag ${tag}"

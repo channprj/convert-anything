@@ -86,18 +86,25 @@ WebP and HEIC inputs choose the safe output per file: a source with alpha become
 | Command | Purpose |
 | --- | --- |
 | `zsh scripts/build-ffmpeg.sh` | Download, verify, and build the pinned arm64 media toolchain and source offer. |
-| `zsh scripts/build-app.sh` | Build the release executable, assemble `dist/Convert Anything.app`, bundle tools and notices, strip binaries, and ad-hoc sign the bundle. |
+| `zsh scripts/build-app.sh` | Advance the HeadVer, build the release executable, assemble `dist/Convert Anything.app`, bundle tools and notices, strip binaries, and ad-hoc sign the bundle. |
 | `zsh scripts/install.sh` | Build and replace `/Applications/Convert Anything.app`, verify it, and launch it. Requires the media toolchain to exist. |
 | `zsh scripts/make-appicon.sh` | Regenerate `App/AppIcon.icns` from the shared brand glyph after a glyph change. |
 | `zsh scripts/check.sh` | Run the complete formatting, installer, test, build, packaging, signature, and runtime acceptance gate. |
 | `swift run ConvertAnythingCoreTests` | Run the 88 core tests. |
-| `swift run ConvertAnythingMacTests` | Run the 14 macOS adapter tests. |
+| `swift run ConvertAnythingMacTests` | Run the 15 macOS adapter tests. |
+| `zsh scripts/test-headver.sh` | Check ISO week numbers and that a build advances `VERSION` without changing `head`. |
 | `zsh scripts/integration-test.sh` | Generate fixtures and run the 15 real-media integration tests with the bundled tools. |
 | `zsh scripts/runtime-smoke.sh` | Launch the packaged app, perform four conversions, verify sources and output codecs, and quit normally. |
 | `zsh scripts/test-packaging.sh` | Verify bundle contents, source offer, codecs, architecture, dependencies, and code signature. |
 | `zsh scripts/test-install.sh` | Exercise the curl bootstrap installer against a local archive and check that CLI credentials are not forwarded. |
 
 The packaged executable also accepts `--ingest <absolute-path>...` as an internal automated-test entry point. Normal use is drag and drop through the status item or popover.
+
+### Version
+
+The app version is a [HeadVer](https://github.com/line/headver): `head.yearweek.build`, recorded in `VERSION`. `head` stays `0` until someone changes that file by hand. `yearweek` is the ISO-8601 week (`YYWW`). Every `zsh scripts/build-app.sh` run, including installation, increases `build` by one and writes the same value into `App/Info.plist`. The popover shows it at the bottom left.
+
+A commit that changes `VERSION` creates the annotated tag `v<head>.<yearweek>.<build>`. Pushing that commit also pushes the tag when Git uses `scripts/git-hooks`. The app build sets `core.hooksPath` to that directory when the local hook path is empty. Set it by hand with `git config core.hooksPath scripts/git-hooks`.
 
 ### App icon
 
@@ -170,7 +177,7 @@ After building the media toolchain, quit any installed `ConvertAnything` process
 zsh scripts/check.sh
 ```
 
-The gate runs strict Swift formatting, the curl installer test, 88 core tests, 14 macOS adapter tests, 15 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
+The gate runs strict Swift formatting, the curl installer test, HeadVer checks, 88 core tests, 15 macOS adapter tests, 15 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
 
 The runtime smoke test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
 

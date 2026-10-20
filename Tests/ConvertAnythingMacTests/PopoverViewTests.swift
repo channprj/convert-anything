@@ -9,6 +9,9 @@ let popoverViewTests: [TestCase] = [
   TestCase("empty popover keeps its footer on the bottom edge") {
     try await emptyPopoverFillsFixedHeight()
   },
+  TestCase("popover shows the headver at the bottom left") {
+    try await popoverShowsVersionAtBottomLeft()
+  },
   TestCase("targeted popover highlights the full drop area without hiding controls") {
     try await targetedPopoverKeepsControlsVisible()
   },
@@ -30,7 +33,8 @@ private func emptyPopoverFillsFixedHeight() throws {
       model: model,
       dropPresentation: DropPresentationCoordinator(),
       onSettings: {},
-      onQuit: {}
+      onQuit: {},
+      versionText: "0.2643.0"
     )
   )
   host.frame = NSRect(origin: .zero, size: size)
@@ -43,19 +47,73 @@ private func emptyPopoverFillsFixedHeight() throws {
   window.contentView = host
   host.layoutSubtreeIfNeeded()
 
-  // Only the footer buttons are real controls; the drop destination spans the
-  // whole popover, so it cannot report where the stack ends.
-  let footerButtons = descendants(of: host).compactMap { $0 as? NSButton }
-  guard !footerButtons.isEmpty else {
-    throw TestFailure(description: "Popover rendered no footer buttons to measure")
-  }
-  let footerBottom = footerButtons.map { $0.convert($0.bounds, to: host).maxY }.max() ?? 0
-  let bottomGap = size.height - footerBottom
+  // The drop destination spans the whole popover, so the version label is the
+  // lowest footer content that reports a frame.
+  let version = try versionView(in: host, version: "0.2643.0")
+  let versionFrame = version.convert(version.bounds, to: host)
+  let bottomGap = size.height - versionFrame.maxY
 
   try expectTrue(
     bottomGap <= 20,
     "Empty popover footer sits \(bottomGap)pt above the bottom edge, expected at most 20pt"
   )
+}
+
+@MainActor
+private func popoverShowsVersionAtBottomLeft() throws {
+  _ = NSApplication.shared
+  let size = NSSize(width: 360, height: 430)
+  let version = "0.2643.0"
+  let host = NSHostingView(
+    rootView: PopoverView(
+      model: makeModel(),
+      dropPresentation: DropPresentationCoordinator(),
+      onSettings: {},
+      onQuit: {},
+      versionText: version
+    )
+  )
+  host.frame = NSRect(origin: .zero, size: size)
+  let window = NSWindow(
+    contentRect: NSRect(origin: .zero, size: size),
+    styleMask: [.borderless],
+    backing: .buffered,
+    defer: false
+  )
+  window.contentView = host
+  host.layoutSubtreeIfNeeded()
+
+  let label = try versionView(in: host, version: version)
+  let frame = label.convert(label.bounds, to: host)
+  try expectTrue(
+    frame.minX <= 20,
+    "Version label starts at x \(frame.minX), expected at most 20"
+  )
+  try expectTrue(
+    size.height - frame.maxY <= 20,
+    "Version label sits \(size.height - frame.maxY)pt above the bottom edge"
+  )
+  let buttons = descendants(of: host).compactMap { $0 as? NSButton }
+  guard !buttons.isEmpty else {
+    throw TestFailure(description: "Popover rendered no footer buttons")
+  }
+  let lowestButton = buttons.map { $0.convert($0.bounds, to: host).maxY }.max() ?? 0
+  try expectTrue(
+    frame.maxY > lowestButton,
+    "Version label is not below the footer buttons"
+  )
+}
+
+@MainActor
+private func versionView(in host: NSView, version: String) throws -> NSView {
+  let match = descendants(of: host).first { view in
+    view.accessibilityIdentifier() == PopoverView.versionIdentifier
+      || (view as? NSTextField)?.stringValue == version
+  }
+  guard let match else {
+    throw TestFailure(description: "Popover did not show version \(version)")
+  }
+  return match
 }
 
 @MainActor
@@ -70,7 +128,8 @@ private func targetedPopoverKeepsControlsVisible() throws {
       model: model,
       dropPresentation: presentation,
       onSettings: {},
-      onQuit: {}
+      onQuit: {},
+      versionText: "0.2643.0"
     )
   )
   host.frame = NSRect(origin: .zero, size: size)
@@ -89,7 +148,8 @@ private func targetedPopoverKeepsControlsVisible() throws {
       model: model,
       dropPresentation: idlePresentation,
       onSettings: {},
-      onQuit: {}
+      onQuit: {},
+      versionText: "0.2643.0"
     )
   )
   idleHost.frame = NSRect(origin: .zero, size: size)

@@ -1,0 +1,53 @@
+#!/bin/zsh
+set -euo pipefail
+
+if [[ "${HEADVER_TAG_PUSH:-}" == 1 ]]; then
+  exit 0
+fi
+
+remote="${1:-origin}"
+repo_root="$(git rev-parse --show-toplevel)"
+cd "$repo_root"
+
+typeset -A seen
+tags=()
+while read -r local_ref local_sha remote_ref remote_sha; do
+  [[ -n "${local_ref:-}" ]] || continue
+  if [[ "$local_sha" == 0000000000000000000000000000000000000000 ]]; then
+    continue
+  fi
+  if [[ "$local_ref" == refs/tags/* ]]; then
+    continue
+  fi
+  while read -r tag; do
+    [[ -n "$tag" ]] || continue
+    if [[ ! "$tag" =~ '^v[0-9]+\.[0-9]{4}\.[0-9]+$' ]]; then
+      continue
+    fi
+    if [[ -n "${seen[$tag]:-}" ]]; then
+      continue
+    fi
+    commit="$(git rev-parse "${tag}^{}")"
+    if ! git merge-base --is-ancestor "$commit" "$local_sha"; then
+      continue
+    fi
+    if [[ "$remote_sha" != 0000000000000000000000000000000000000000 ]] \
+      && git merge-base --is-ancestor "$commit" "$remote_sha"; then
+      continue
+    fi
+    seen[$tag]=1
+    tags+=("$tag")
+  done < <(git for-each-ref --format '%(refname:short)' 'refs/tags/v*')
+done
+
+if [[ ${#tags} -eq 0 ]]; then
+  exit 0
+fi
+
+refspecs=()
+for tag in "${tags[@]}"; do
+  refspecs+=("refs/tags/${tag}:refs/tags/${tag}")
+done
+
+export HEADVER_TAG_PUSH=1
+git push "$remote" "${refspecs[@]}"

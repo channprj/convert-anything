@@ -102,7 +102,7 @@ Keep that directory intact with every distributed copy. See `THIRD_PARTY_NOTICES
 
 ### Separate local verification from trusted distribution
 
-`scripts/build-app.sh` creates an ad-hoc signed local bundle. Developer ID signing, notarization, stapling, automatic updates, and trusted public binary distribution are not implemented.
+`scripts/build-app.sh` creates an ad-hoc signed local bundle. Before assembly it advances the HeadVer in `VERSION` and copies that value into `App/Info.plist`. The popover shows the version at the bottom left. A commit that changes `VERSION` creates the annotated tag `v<head>.<yearweek>.<build>`, and the repo pre-push hook publishes that tag. Developer ID signing, notarization, stapling, automatic updates, and trusted public binary distribution are not implemented.
 
 ### Use executable test targets
 

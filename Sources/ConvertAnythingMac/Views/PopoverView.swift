@@ -1,24 +1,29 @@
+import AppKit
 import ConvertAnythingCore
 import SwiftUI
 
 public struct PopoverView: View {
   public static let dropTargetLabel = "Drop to convert"
+  public static let versionIdentifier = "appVersion"
 
   @ObservedObject private var model: AppViewModel
   @ObservedObject private var dropPresentation: DropPresentationCoordinator
   private let onSettings: @MainActor () -> Void
   private let onQuit: @MainActor () -> Void
+  private let versionText: String
 
   public init(
     model: AppViewModel,
     dropPresentation: DropPresentationCoordinator,
     onSettings: @escaping @MainActor () -> Void,
-    onQuit: @escaping @MainActor () -> Void
+    onQuit: @escaping @MainActor () -> Void,
+    versionText: String = AppVersion.marketingVersion()
   ) {
     self.model = model
     self.dropPresentation = dropPresentation
     self.onSettings = onSettings
     self.onQuit = onQuit
+    self.versionText = versionText
   }
 
   public var body: some View {
@@ -109,17 +114,24 @@ public struct PopoverView: View {
   }
 
   private var footer: some View {
-    HStack {
-      Button("Settings…", action: onSettings)
-      Spacer()
-      if hasFinishedJobs {
-        Button("Clear") { Task { await model.clearFinishedJobs() } }
-          .help("Clear finished conversions")
+    VStack(alignment: .leading, spacing: 8) {
+      HStack {
+        Button("Settings…", action: onSettings)
+        Spacer()
+        if hasFinishedJobs {
+          Button("Clear") { Task { await model.clearFinishedJobs() } }
+            .help("Clear finished conversions")
+        }
+        if let output = model.lastDrainSummary?.lastSuccessfulOutput {
+          Button("Show Output") { model.reveal(output) }
+        }
+        Button("Quit", action: onQuit)
       }
-      if let output = model.lastDrainSummary?.lastSuccessfulOutput {
-        Button("Show Output") { model.reveal(output) }
+      if !versionText.isEmpty {
+        VersionLabel(text: versionText)
+          .frame(maxWidth: .infinity, alignment: .leading)
+          .accessibilityIdentifier(Self.versionIdentifier)
       }
-      Button("Quit", action: onQuit)
     }
     .buttonStyle(.borderless)
     .padding(12)
@@ -155,6 +167,26 @@ public struct PopoverView: View {
   }
 }
 
+private struct VersionLabel: NSViewRepresentable {
+  let text: String
+
+  func makeNSView(context: Context) -> NSTextField {
+    let field = NSTextField(labelWithString: text)
+    field.font = NSFont.preferredFont(forTextStyle: .caption1)
+    field.textColor = .secondaryLabelColor
+    field.alignment = .left
+    field.lineBreakMode = .byTruncatingTail
+    field.maximumNumberOfLines = 1
+    field.setAccessibilityIdentifier(PopoverView.versionIdentifier)
+    return field
+  }
+
+  func updateNSView(_ field: NSTextField, context: Context) {
+    field.stringValue = text
+    field.setAccessibilityIdentifier(PopoverView.versionIdentifier)
+  }
+}
+
 private struct PopoverDropTreatment: View {
   var body: some View {
     ZStack(alignment: .bottom) {
@@ -170,7 +202,7 @@ private struct PopoverDropTreatment: View {
         .overlay {
           Capsule().stroke(Color.accentColor.opacity(0.45))
         }
-        .padding(.bottom, 54)
+        .padding(.bottom, 76)
     }
     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
   }

@@ -7,6 +7,7 @@ cd "$repo_root"
 
 swift format lint --strict --recursive Package.swift Sources Tests
 zsh scripts/test-install.sh
+zsh scripts/test-headver.sh
 swift run ConvertAnythingCoreTests
 swift run ConvertAnythingMacTests
 swift build -c release --product ConvertAnythingApp
@@ -16,5 +17,5 @@ zsh scripts/runtime-smoke.sh
 zsh scripts/test-packaging.sh
 git diff --check
 
-print "All checks passed: 88 core, 14 macOS, 15 integration"
+print "All checks passed: 88 core, 15 macOS, 15 integration"
 print "Artifact: $repo_root/dist/Convert Anything.app"
