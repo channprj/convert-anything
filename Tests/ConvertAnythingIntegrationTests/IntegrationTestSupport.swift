@@ -104,6 +104,28 @@ func successfulOutput(from outcome: ConversionOutcome) throws -> URL {
   return output
 }
 
+func averageColor(
+  of url: URL,
+  ffmpeg: URL,
+  crop: String
+) async throws -> (red: Int, green: Int, blue: Int) {
+  let result = try await FoundationCommandExecutor().execute(
+    CommandRequest(
+      id: UUID(),
+      executable: ffmpeg,
+      arguments: [
+        "-nostdin", "-hide_banner", "-loglevel", "error", "-noautorotate", "-i", url.path, "-vf",
+        "\(crop),scale=1:1", "-frames:v", "1", "-pix_fmt", "rgb24", "-f", "rawvideo", "pipe:1",
+      ]
+    )
+  ) { _ in }
+  guard result.terminationStatus == 0, result.standardOutput.count >= 3 else {
+    throw TestFailure(description: "Could not sample \(url.lastPathComponent)")
+  }
+  let bytes = [UInt8](result.standardOutput.prefix(3))
+  return (Int(bytes[0]), Int(bytes[1]), Int(bytes[2]))
+}
+
 func sha256(_ url: URL) throws -> String {
   let process = Process()
   let pipe = Pipe()

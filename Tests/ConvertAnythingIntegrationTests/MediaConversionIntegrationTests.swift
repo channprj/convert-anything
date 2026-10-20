@@ -1,6 +1,9 @@
 import ConvertAnythingCore
 import ConvertAnythingTestSupport
+import CoreGraphics
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
   -> [TestCase]
@@ -202,6 +205,57 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         "alpha HEIC temporary files"
       )
     },
+    TestCase("real tiled HEIC conversion keeps the clean frame") {
+      let input = try writeMarkedHEIC(
+        width: 1024,
+        height: 768,
+        orientation: 1,
+        in: environment.fixtureDirectory
+      )
+      let output = try await convertedHEIC(input, environment: environment)
+      let media = try await environment.probe(output)
+      let bottomRight = try await averageColor(
+        of: output, ffmpeg: environment.ffmpeg, crop: "crop=32:32:iw-32:ih-32")
+
+      try expectEqual(output.pathExtension, "jpg", "tiled HEIC extension")
+      try expectEqual(media.width, 1024, "tiled HEIC width")
+      try expectEqual(media.height, 768, "tiled HEIC height")
+      try expectTrue(bottomRight.green > 180 && bottomRight.red < 80, "tiled HEIC bottom-right")
+    },
+    TestCase("real oriented tiled HEIC conversion keeps the upright frame") {
+      let input = try writeMarkedHEIC(
+        width: 1024,
+        height: 768,
+        orientation: 6,
+        in: environment.fixtureDirectory
+      )
+      let output = try await convertedHEIC(input, environment: environment)
+      let media = try await environment.probe(output)
+      let topRight = try await averageColor(
+        of: output, ffmpeg: environment.ffmpeg, crop: "crop=32:32:iw-32:0")
+
+      try expectEqual(media.width, 768, "oriented HEIC width")
+      try expectEqual(media.height, 1024, "oriented HEIC height")
+      try expectTrue(topRight.red > 180 && topRight.green < 80, "oriented HEIC top-right")
+    },
+    TestCase("real tiled alpha HEIC conversion keeps the clean PNG frame") {
+      let input = try writeMarkedHEIC(
+        width: 1024,
+        height: 768,
+        orientation: 1,
+        alpha: true,
+        in: environment.fixtureDirectory
+      )
+      let output = try await convertedHEIC(input, environment: environment)
+      let media = try await environment.probe(output)
+      let alpha = try await environment.decodedAlphaPlane(from: output)
+
+      try expectEqual(output.pathExtension, "png", "tiled alpha HEIC extension")
+      try expectEqual(media.width, 1024, "tiled alpha HEIC width")
+      try expectEqual(media.height, 768, "tiled alpha HEIC height")
+      try expectTrue(media.hasAlpha, "tiled alpha HEIC alpha")
+      try expectEqual(alpha.count, 1024 * 768, "tiled alpha HEIC alpha plane")
+    },
     TestCase("corrupt media leaves no final or temporary artifact") {
       let directory = environment.fixtureDirectory
         .appendingPathComponent("test-runs", isDirectory: true)
@@ -239,4 +293,59 @@ func mediaConversionIntegrationTests(_ environment: IntegrationEnvironment)
         "canceled temporary files")
     },
   ]
+}
+
+private func convertedHEIC(_ input: URL, environment: IntegrationEnvironment) async throws -> URL {
+  let rule = try defaultRule(for: "heic")
+  let plan = try await ConversionPlanner().plan(input: input, rule: rule, jobID: UUID())
+  return try successfulOutput(from: await environment.service().convert(plan) { _ in })
+}
+
+private func writeMarkedHEIC(
+  width: Int,
+  height: Int,
+  orientation: Int,
+  alpha: Bool = false,
+  in directory: URL
+) throws -> URL {
+  let folder = directory.appendingPathComponent("test-runs", isDirectory: true)
+    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+  try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+  let url = folder.appendingPathComponent("marked.heic")
+  let colorSpace = CGColorSpaceCreateDeviceRGB()
+  guard
+    let context = CGContext(
+      data: nil,
+      width: width,
+      height: height,
+      bitsPerComponent: 8,
+      bytesPerRow: width * 4,
+      space: colorSpace,
+      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+    )
+  else {
+    throw TestFailure(description: "Could not allocate the HEIC marker image")
+  }
+  let opacity: CGFloat = alpha ? 0.5 : 1
+  context.setFillColor(CGColor(red: 0, green: 0, blue: 1, alpha: opacity))
+  context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+  context.setFillColor(CGColor(red: 1, green: 0, blue: 0, alpha: 1))
+  context.fill(CGRect(x: 0, y: height - 80, width: 80, height: 80))
+  context.setFillColor(CGColor(red: 0, green: 1, blue: 0, alpha: 1))
+  context.fill(CGRect(x: width - 80, y: 0, width: 80, height: 80))
+  guard let image = context.makeImage(),
+    let destination = CGImageDestinationCreateWithURL(
+      url as CFURL, UTType.heic.identifier as CFString, 1, nil)
+  else {
+    throw TestFailure(description: "Could not create the marked HEIC")
+  }
+  CGImageDestinationAddImage(
+    destination,
+    image,
+    [kCGImagePropertyOrientation: orientation] as CFDictionary
+  )
+  guard CGImageDestinationFinalize(destination) else {
+    throw TestFailure(description: "Could not write the marked HEIC")
+  }
+  return url
 }

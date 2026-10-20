@@ -22,7 +22,15 @@ public enum EncoderArguments {
     case .avif:
       arguments += imageArguments(quality: plan.rule.quality, hasAlpha: media.hasAlpha)
     case .jpegOrPng:
-      if media.containerNames.contains("heic"),
+      if let colorGrid = media.heicColorGrid {
+        arguments += heicGridArguments(
+          color: colorGrid,
+          alphaGrid: media.heicAlphaGrid,
+          alphaStreamIndex: media.auxiliaryAlphaVideoStreamIndex,
+          orientation: media.heicOrientation,
+          quality: plan.rule.quality
+        )
+      } else if media.containerNames.contains("heic"),
         let alphaStreamIndex = media.auxiliaryAlphaVideoStreamIndex
       {
         arguments += heicPNGArguments(alphaStreamIndex: alphaStreamIndex)
@@ -73,6 +81,87 @@ public enum EncoderArguments {
       "-filter_complex", "[0:v:0][0:v:\(alphaStreamIndex)]alphamerge[out]", "-map", "[out]",
       "-frames:v", "1", "-c:v", "png",
     ]
+  }
+
+  /// Rebuild the clean HEIC frame. Mapping the first tile alone stores only
+  /// that tile, which is the cropped image FFmpeg 8.0 produces for a grid.
+  private static func heicGridArguments(
+    color: HEICImageGrid,
+    alphaGrid: HEICImageGrid?,
+    alphaStreamIndex: Int?,
+    orientation: Int,
+    quality: QualityPreset
+  ) -> [String] {
+    let orientationFilter = heicOrientationFilter(orientation)
+    var filters: [String] = []
+    let hasAlpha = alphaGrid != nil || alphaStreamIndex != nil
+    if let alphaGrid {
+      filters.append(gridAssembly(color, label: "color"))
+      filters.append(gridAssembly(alphaGrid, label: "alpha"))
+      filters.append(mergeAlpha(orientationFilter))
+    } else if let alphaStreamIndex {
+      filters.append(gridAssembly(color, label: "color"))
+      filters.append(mergeAlpha(orientationFilter, alphaStreamIndex: alphaStreamIndex))
+    } else {
+      filters.append(gridAssembly(color, label: "out", orientationFilter: orientationFilter))
+    }
+
+    var arguments = [
+      "-filter_complex", filters.joined(separator: ";"), "-map", "[out]", "-frames:v", "1",
+    ]
+    if hasAlpha {
+      arguments += ["-c:v", "png"]
+    } else {
+      arguments += ["-c:v", "mjpeg", "-q:v", jpegQuality(for: quality)]
+    }
+    return arguments
+  }
+
+  private static func mergeAlpha(_ orientationFilter: String?, alphaStreamIndex: Int? = nil)
+    -> String
+  {
+    let alphaInput = alphaStreamIndex.map { "[0:v:\($0)]" } ?? "[alpha]"
+    let transform = orientationFilter.map { ",\($0)" } ?? ""
+    return "[color]\(alphaInput)alphamerge\(transform)[out]"
+  }
+
+  private static func gridAssembly(
+    _ grid: HEICImageGrid,
+    label: String,
+    orientationFilter: String? = nil
+  ) -> String {
+    let inputs = grid.tiles.map { "[0:\($0.streamIndex)]" }.joined()
+    var chain: String
+    if grid.tiles.count == 1 {
+      chain =
+        grid.needsCrop
+        ? "crop=\(grid.width):\(grid.height):\(grid.originX):\(grid.originY)"
+        : "copy"
+    } else {
+      let layout = grid.tiles.map { "\($0.x)_\($0.y)" }.joined(separator: "|")
+      chain = "xstack=inputs=\(grid.tiles.count):layout=\(layout)"
+      if grid.needsCrop {
+        chain += ",crop=\(grid.width):\(grid.height):\(grid.originX):\(grid.originY)"
+      }
+    }
+    if let orientationFilter {
+      chain += ",\(orientationFilter)"
+    }
+    return "\(inputs)\(chain)[\(label)]"
+  }
+
+  /// Display transforms checked against ImageIO for EXIF orientations 1...8.
+  private static func heicOrientationFilter(_ orientation: Int) -> String? {
+    switch orientation {
+    case 2: "hflip"
+    case 3: "hflip,vflip"
+    case 4: "vflip"
+    case 5: "transpose=0"
+    case 6: "transpose=1"
+    case 7: "transpose=3"
+    case 8: "transpose=2"
+    default: nil
+    }
   }
 
   private static func videoArguments(quality: QualityPreset) -> [String] {

@@ -33,7 +33,7 @@ The application bundles arm64 `ffmpeg` and `ffprobe` executables. Conversion hap
 3. `DropAdmissionService` resolves each URL and rejects missing, non-regular, unreadable, extensionless, or unsupported inputs.
 4. `ConversionPlanner` checks the enabled rule, reads the allocated source size, reserves a conservative disk-space estimate plus 64 MiB, and asks `OutputPathResolver` for final and hidden temporary sibling paths.
 5. Accepted plans enter `ConversionQueue`. The actor drains queued IDs serially and publishes the `queued → probing → converting → validating → terminal` state transitions.
-6. `ConversionService` uses `ffprobe` to inspect the input. For WebP and HEIC, alpha detection settles whether the dynamic target is PNG or JPG; HEIC auxiliary alpha is merged into the PNG output.
+6. `ConversionService` uses `ffprobe` to inspect the input. For WebP and HEIC, alpha detection settles whether the dynamic target is PNG or JPG. A tiled HEIC is reassembled from its tile grid, cropped to the clean image, and rotated from the image orientation before encoding. HEIC auxiliary alpha is merged into the PNG output.
 7. `EncoderArguments` builds a fixed argument array for the selected target and quality preset. `FFmpegRunner` reports progress parsed from FFmpeg's `-progress pipe:1` output.
 8. The encoded hidden temporary file must be a non-empty regular file. A second probe verifies the expected container, codec, dimensions, orientation, channel count, and alpha contract where applicable.
 9. Only a validated output is moved to the reserved final name. The source is never renamed, replaced, modified, or deleted, and temporary output is removed on failure or cancellation.

@@ -161,6 +161,101 @@ private let webpArgumentTests: [TestCase] =
   ]
 
 private let heicArgumentTests: [TestCase] = [
+  TestCase("tiled HEIC arguments reassemble every tile and crop the clean image") {
+    let plan = try makePlan(source: "photo.heic", target: .jpegOrPng, quality: .balanced)
+    defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+    let grid = HEICImageGrid(
+      codedWidth: 1024,
+      codedHeight: 1024,
+      originX: 0,
+      originY: 0,
+      width: 1024,
+      height: 768,
+      tiles: [
+        HEICTilePlacement(streamIndex: 0, x: 0, y: 0),
+        HEICTilePlacement(streamIndex: 1, x: 512, y: 0),
+        HEICTilePlacement(streamIndex: 2, x: 0, y: 512),
+        HEICTilePlacement(streamIndex: 3, x: 512, y: 512),
+      ]
+    )
+
+    try expectEqual(
+      EncoderArguments.make(plan: plan, media: tiledHEIC(grid: grid, alpha: nil, orientation: 1)),
+      commonInputArguments(plan)
+        + [
+          "-filter_complex",
+          "[0:0][0:1][0:2][0:3]xstack=inputs=4:layout=0_0|512_0|0_512|512_512,crop=1024:768:0:0[out]",
+          "-map", "[out]", "-frames:v", "1", "-c:v", "mjpeg", "-q:v", "5",
+        ]
+        + outputArguments(plan)
+    )
+  },
+  TestCase("tiled alpha HEIC arguments merge both reassembled planes into PNG") {
+    let plan = try makePlan(source: "overlay.heic", target: .jpegOrPng, quality: .balanced)
+    defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+    let color = HEICImageGrid(
+      codedWidth: 1024,
+      codedHeight: 1024,
+      originX: 0,
+      originY: 0,
+      width: 1024,
+      height: 768,
+      tiles: [
+        HEICTilePlacement(streamIndex: 0, x: 0, y: 0),
+        HEICTilePlacement(streamIndex: 1, x: 512, y: 0),
+      ]
+    )
+    let alpha = HEICImageGrid(
+      codedWidth: 1024,
+      codedHeight: 1024,
+      originX: 0,
+      originY: 0,
+      width: 1024,
+      height: 768,
+      tiles: [
+        HEICTilePlacement(streamIndex: 2, x: 0, y: 0),
+        HEICTilePlacement(streamIndex: 3, x: 512, y: 0),
+      ]
+    )
+
+    try expectEqual(
+      EncoderArguments.make(
+        plan: plan, media: tiledHEIC(grid: color, alpha: alpha, orientation: 1)),
+      commonInputArguments(plan)
+        + [
+          "-filter_complex",
+          "[0:0][0:1]xstack=inputs=2:layout=0_0|512_0,crop=1024:768:0:0[color];"
+            + "[0:2][0:3]xstack=inputs=2:layout=0_0|512_0,crop=1024:768:0:0[alpha];"
+            + "[color][alpha]alphamerge[out]",
+          "-map", "[out]", "-frames:v", "1", "-c:v", "png",
+        ]
+        + outputArguments(plan)
+    )
+  },
+  TestCase("tiled HEIC arguments apply display orientation after the clean crop") {
+    let plan = try makePlan(source: "portrait.heic", target: .jpegOrPng, quality: .higherQuality)
+    defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
+    let grid = HEICImageGrid(
+      codedWidth: 1024,
+      codedHeight: 1024,
+      originX: 0,
+      originY: 0,
+      width: 1024,
+      height: 768,
+      tiles: [HEICTilePlacement(streamIndex: 4, x: 0, y: 0)]
+    )
+
+    try expectEqual(
+      EncoderArguments.make(plan: plan, media: tiledHEIC(grid: grid, alpha: nil, orientation: 6)),
+      commonInputArguments(plan)
+        + [
+          "-filter_complex",
+          "[0:4]crop=1024:768:0:0,transpose=1[out]",
+          "-map", "[out]", "-frames:v", "1", "-c:v", "mjpeg", "-q:v", "2",
+        ]
+        + outputArguments(plan)
+    )
+  },
   TestCase("alpha HEIC arguments merge its auxiliary alpha stream into PNG") {
     let plan = try makePlan(source: "overlay.heic", target: .jpegOrPng, quality: .balanced)
     defer { try? FileManager.default.removeItem(at: plan.input.deletingLastPathComponent()) }
@@ -174,8 +269,30 @@ private let heicArgumentTests: [TestCase] = [
         ]
         + outputArguments(plan)
     )
-  }
+  },
 ]
+
+private func tiledHEIC(
+  grid: HEICImageGrid,
+  alpha: HEICImageGrid?,
+  orientation: Int
+) -> InputMediaInfo {
+  let swapsAxes = [5, 6, 7, 8].contains(orientation)
+  return InputMediaInfo(
+    containerNames: ["mov", "mp4", "heic"],
+    durationSeconds: nil,
+    videoCodec: "hevc",
+    audioCodec: nil,
+    width: swapsAxes ? grid.height : grid.width,
+    height: swapsAxes ? grid.width : grid.height,
+    channelCount: nil,
+    hasAlpha: alpha != nil,
+    rotationDegrees: nil,
+    heicColorGrid: grid,
+    heicAlphaGrid: alpha,
+    heicOrientation: orientation
+  )
+}
 
 private func commonInputArguments(_ plan: ConversionPlan) -> [String] {
   ["-nostdin", "-hide_banner", "-loglevel", "error", "-n", "-i", plan.input.path]

@@ -55,6 +55,56 @@ public struct ConversionPlan: Identifiable, Equatable, Sendable {
   }
 }
 
+/// One tile of a HEIF derived image, addressed by its absolute stream index.
+public struct HEICTilePlacement: Equatable, Sendable {
+  public let streamIndex: Int
+  public let x: Int
+  public let y: Int
+
+  public init(streamIndex: Int, x: Int, y: Int) {
+    self.streamIndex = streamIndex
+    self.x = x
+    self.y = y
+  }
+}
+
+/// A HEIF grid or overlay before display orientation is applied.
+///
+/// `width` and `height` are the clean image inside the coded canvas.
+/// FFmpeg 8.0 exposes each tile as its own stream, so the coded canvas is
+/// larger than one tile and often larger than the clean image.
+public struct HEICImageGrid: Equatable, Sendable {
+  public let codedWidth: Int
+  public let codedHeight: Int
+  public let originX: Int
+  public let originY: Int
+  public let width: Int
+  public let height: Int
+  public let tiles: [HEICTilePlacement]
+
+  public init(
+    codedWidth: Int,
+    codedHeight: Int,
+    originX: Int,
+    originY: Int,
+    width: Int,
+    height: Int,
+    tiles: [HEICTilePlacement]
+  ) {
+    self.codedWidth = codedWidth
+    self.codedHeight = codedHeight
+    self.originX = originX
+    self.originY = originY
+    self.width = width
+    self.height = height
+    self.tiles = tiles
+  }
+
+  public var needsCrop: Bool {
+    originX != 0 || originY != 0 || width != codedWidth || height != codedHeight
+  }
+}
+
 public struct InputMediaInfo: Equatable, Sendable {
   public let containerNames: [String]
   public let durationSeconds: Double?
@@ -66,6 +116,10 @@ public struct InputMediaInfo: Equatable, Sendable {
   public let hasAlpha: Bool
   public let rotationDegrees: Int?
   public let auxiliaryAlphaVideoStreamIndex: Int?
+  public let heicColorGrid: HEICImageGrid?
+  public let heicAlphaGrid: HEICImageGrid?
+  /// EXIF/ImageIO orientation of a tiled HEIC, or 1 when the pixels are already upright.
+  public let heicOrientation: Int
 
   public init(
     containerNames: [String],
@@ -77,7 +131,10 @@ public struct InputMediaInfo: Equatable, Sendable {
     channelCount: Int?,
     hasAlpha: Bool,
     rotationDegrees: Int?,
-    auxiliaryAlphaVideoStreamIndex: Int? = nil
+    auxiliaryAlphaVideoStreamIndex: Int? = nil,
+    heicColorGrid: HEICImageGrid? = nil,
+    heicAlphaGrid: HEICImageGrid? = nil,
+    heicOrientation: Int = 1
   ) {
     self.containerNames = containerNames
     self.durationSeconds = durationSeconds
@@ -89,6 +146,9 @@ public struct InputMediaInfo: Equatable, Sendable {
     self.hasAlpha = hasAlpha
     self.rotationDegrees = rotationDegrees
     self.auxiliaryAlphaVideoStreamIndex = auxiliaryAlphaVideoStreamIndex
+    self.heicColorGrid = heicColorGrid
+    self.heicAlphaGrid = heicAlphaGrid
+    self.heicOrientation = heicOrientation
   }
 }
 

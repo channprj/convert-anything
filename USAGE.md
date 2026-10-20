@@ -90,9 +90,9 @@ WebP and HEIC inputs choose the safe output per file: a source with alpha become
 | `zsh scripts/install.sh` | Build and replace `/Applications/Convert Anything.app`, verify it, and launch it. Requires the media toolchain to exist. |
 | `zsh scripts/make-appicon.sh` | Regenerate `App/AppIcon.icns` from the shared brand glyph after a glyph change. |
 | `zsh scripts/check.sh` | Run the complete formatting, installer, test, build, packaging, signature, and runtime acceptance gate. |
-| `swift run ConvertAnythingCoreTests` | Run the 83 core tests. |
+| `swift run ConvertAnythingCoreTests` | Run the 88 core tests. |
 | `swift run ConvertAnythingMacTests` | Run the 14 macOS adapter tests. |
-| `zsh scripts/integration-test.sh` | Generate fixtures and run the 12 real-media integration tests with the bundled tools. |
+| `zsh scripts/integration-test.sh` | Generate fixtures and run the 15 real-media integration tests with the bundled tools. |
 | `zsh scripts/runtime-smoke.sh` | Launch the packaged app, perform four conversions, verify sources and output codecs, and quit normally. |
 | `zsh scripts/test-packaging.sh` | Verify bundle contents, source offer, codecs, architecture, dependencies, and code signature. |
 | `zsh scripts/test-install.sh` | Exercise the curl bootstrap installer against a local archive and check that CLI credentials are not forwarded. |
@@ -156,7 +156,7 @@ Encoding uses a unique hidden sibling temporary file. The selected final path ap
 
 ### Preserve WebP and HEIC transparency
 
-Drop an alpha-bearing `image.webp` or `image.heic` to create `image.png`. Drop an opaque `photo.webp` or `photo.heic` to create `photo.jpg`. The decision is based on probed media content rather than the filename alone.
+Drop an alpha-bearing `image.webp` or `image.heic` to create `image.png`. Drop an opaque `photo.webp` or `photo.heic` to create `photo.jpg`. The decision is based on probed media content rather than the filename alone. Tiled HEIC photos, including iPhone pictures, are reassembled to the full clean frame and saved upright.
 
 ### Reverse a default route
 
@@ -170,7 +170,7 @@ After building the media toolchain, quit any installed `ConvertAnything` process
 zsh scripts/check.sh
 ```
 
-The gate runs strict Swift formatting, the curl installer test, 83 core tests, 14 macOS adapter tests, 12 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
+The gate runs strict Swift formatting, the curl installer test, 88 core tests, 14 macOS adapter tests, 15 real-media integration tests, a release build, app assembly and signature checks, packaging checks, and a packaged runtime smoke test.
 
 The runtime smoke test launches one app process, converts WAV, MOV, opaque PNG, and alpha PNG fixtures, verifies source SHA-256 values and output codecs, and quits the app normally.
 
